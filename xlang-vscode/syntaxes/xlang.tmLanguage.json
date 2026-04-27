@@ -1,0 +1,64 @@
+{
+    "scopeName": "source.xlang",
+    "name": "XLang",
+    "fileTypes": ["x", "xl", "xlang"],
+    "patterns": [
+        {
+            "name": "comment.line.double-slash.xlang",
+            "match": "//.*$"
+        },
+        {
+            "name": "comment.block.xlang",
+            "begin": "/\\*",
+            "end": "\\*/"
+        },
+        {
+            "name": "keyword.control.xlang",
+            "match": "\\b(if|else|while|for|switch|case|default|break|done|skip|return)\\b"
+        },
+        {
+            "name": "keyword.other.xlang",
+            "match": "\\b(function|import|output|input)\\b"
+        },
+        {
+            "name": "storage.type.xlang",
+            "match": "\\b(int|float|double|string|array|void)\\b"
+        },
+        {
+            "name": "constant.language.xlang",
+            "match": "\\b(true|false|null|nil)\\b"
+        },
+        {
+            "name": "string.quoted.double.xlang",
+            "begin": "\"",
+            "end": "\"",
+            "patterns": [
+                {
+                    "name": "constant.character.escape.xlang",
+                    "match": "\\\\."
+                }
+            ]
+        },
+        {
+            "name": "constant.numeric.xlang",
+            "match": "\\b\\d+(\\.\\d+)?\\b"
+        },
+        {
+            "name": "entity.name.function.xlang",
+            "match": "function\\s+(\\w+)\\s*\\(",
+            "captures": {
+                "1": {
+                    "name": "entity.name.function.xlang"
+                }
+            }
+        },
+        {
+            "name": "keyword.operator.xlang",
+            "match": "(:=|\\+\\+|--|==|!=|<=|>=|&&|\\|\\||\\+|\\-|\\*|/|%|=|<|>|!|\\^)"
+        },
+        {
+            "name": "punctuation.definition.parameters.xlang",
+            "match": "[(),{}[\\];:]"
+        }
+    ]
+}

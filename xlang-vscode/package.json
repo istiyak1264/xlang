@@ -1,0 +1,185 @@
+{
+    "name": "xlang",
+    "displayName": "XLang Language Support",
+    "description": "Complete XLang language support with compilation, debugging, and IntelliSense",
+    "version": "1.0.0",
+    "publisher": "xlang",
+    "icon": "icons/xlang-icon.png",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/xlang/xlang-vscode"
+    },
+    "engines": {
+        "vscode": "^1.60.0"
+    },
+    "categories": [
+        "Programming Languages",
+        "Debuggers",
+        "Linters",
+        "Formatters"
+    ],
+    "keywords": [
+        "xlang",
+        "compiler",
+        "language",
+        "programming",
+        "c-like"
+    ],
+    "activationEvents": [
+        "onLanguage:xlang",
+        "onCommand:xlang.compile",
+        "onCommand:xlang.run",
+        "onCommand:xlang.build"
+    ],
+    "main": "./extension.js",
+    "contributes": {
+        "languages": [
+            {
+                "id": "xlang",
+                "aliases": ["XLang", "xlang"],
+                "extensions": [".x", ".xl", ".xlang"],
+                "configuration": "./language-configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "xlang",
+                "scopeName": "source.xlang",
+                "path": "./syntaxes/xlang.tmLanguage.json"
+            }
+        ],
+        "snippets": [
+            {
+                "language": "xlang",
+                "path": "./snippets/xlang.json"
+            }
+        ],
+        "commands": [
+            {
+                "command": "xlang.compile",
+                "title": "XLang: Compile Current File",
+                "category": "XLang"
+            },
+            {
+                "command": "xlang.run",
+                "title": "XLang: Run Current File",
+                "category": "XLang"
+            },
+            {
+                "command": "xlang.build",
+                "title": "XLang: Build Project",
+                "category": "XLang"
+            },
+            {
+                "command": "xlang.clean",
+                "title": "XLang: Clean Build Files",
+                "category": "XLang"
+            },
+            {
+                "command": "xlang.compileRun",
+                "title": "XLang: Compile and Run",
+                "category": "XLang"
+            }
+        ],
+        "keybindings": [
+            {
+                "command": "xlang.compile",
+                "key": "ctrl+shift+b",
+                "when": "editorLangId == xlang"
+            },
+            {
+                "command": "xlang.run",
+                "key": "ctrl+f5",
+                "when": "editorLangId == xlang"
+            },
+            {
+                "command": "xlang.compileRun",
+                "key": "f5",
+                "when": "editorLangId == xlang"
+            },
+            {
+                "command": "xlang.build",
+                "key": "ctrl+shift+b",
+                "when": "editorLangId == xlang && workspaceFolderCount > 0"
+            }
+        ],
+        "menus": {
+            "editor/context": [
+                {
+                    "command": "xlang.compile",
+                    "group": "xlang@1",
+                    "when": "resourceLangId == xlang"
+                },
+                {
+                    "command": "xlang.run",
+                    "group": "xlang@2",
+                    "when": "resourceLangId == xlang"
+                },
+                {
+                    "command": "xlang.compileRun",
+                    "group": "xlang@3",
+                    "when": "resourceLangId == xlang"
+                }
+            ],
+            "explorer/context": [
+                {
+                    "command": "xlang.compile",
+                    "group": "xlang",
+                    "when": "resourceLangId == xlang"
+                }
+            ]
+        },
+        "configuration": {
+            "title": "XLang",
+            "properties": {
+                "xlang.compilerPath": {
+                    "type": "string",
+                    "default": "xlangc",
+                    "description": "Path to XLang compiler executable"
+                },
+                "xlang.compilerArgs": {
+                    "type": "array",
+                    "default": [],
+                    "description": "Additional arguments to pass to the compiler"
+                },
+                "xlang.runInTerminal": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Run compiled programs in the integrated terminal"
+                },
+                "xlang.formatOnSave": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Format XLang files automatically on save"
+                },
+                "xlang.lintOnSave": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Lint XLang files automatically on save"
+                },
+                "xlang.enableIntelliSense": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable IntelliSense for XLang"
+                },
+                "xlang.outputDirectory": {
+                    "type": "string",
+                    "default": ".",
+                    "description": "Directory for compiled executables"
+                }
+            }
+        },
+        "problemMatchers": [
+            {
+                "name": "xlang",
+                "owner": "xlang",
+                "pattern": {
+                    "regexp": "^\\[Error\\] line (\\d+): (.*)$",
+                    "file": 0,
+                    "line": 1,
+                    "message": 2
+                }
+            }
+        ]
+    }
+}

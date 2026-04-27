@@ -1,0 +1,123 @@
+{
+    "Function Definition": {
+        "prefix": "func",
+        "body": [
+            "function ${1:name}(${2:params}):",
+            "    ${3:// function body}",
+            "    return ${4:value}"
+        ],
+        "description": "Create a new function"
+    },
+    "Main Function": {
+        "prefix": "main",
+        "body": [
+            "function main():",
+            "    ${1:// program entry point}",
+            "    return 0"
+        ],
+        "description": "Create main function"
+    },
+    "If Statement": {
+        "prefix": "if",
+        "body": [
+            "if (${1:condition}):",
+            "    ${2:// then block}"
+        ],
+        "description": "If statement"
+    },
+    "If-Else Statement": {
+        "prefix": "ife",
+        "body": [
+            "if (${1:condition}):",
+            "    ${2:// then block}",
+            "else:",
+            "    ${3:// else block}"
+        ],
+        "description": "If-else statement"
+    },
+    "If-Else If-Else": {
+        "prefix": "ifelse",
+        "body": [
+            "if (${1:condition1}):",
+            "    ${2:// code}",
+            "else if (${3:condition2}):",
+            "    ${4:// code}",
+            "else:",
+            "    ${5:// code}"
+        ],
+        "description": "If-else if-else statement"
+    },
+    "While Loop": {
+        "prefix": "while",
+        "body": [
+            "while (${1:condition}):",
+            "    ${2:// loop body}"
+        ],
+        "description": "While loop"
+    },
+    "For Loop": {
+        "prefix": "for",
+        "body": [
+            "for (${1:init}; ${2:condition}; ${3:update}):",
+            "    ${4:// loop body}"
+        ],
+        "description": "For loop"
+    },
+    "Switch Statement": {
+        "prefix": "switch",
+        "body": [
+            "switch (${1:expression}):",
+            "    case ${2:value}:",
+            "        ${3:// code}",
+            "        break",
+            "    default:",
+            "        ${4:// default code}"
+        ],
+        "description": "Switch statement"
+    },
+    "Variable Declaration": {
+        "prefix": "var",
+        "body": "${1:int} ${2:name} := ${3:value}",
+        "description": "Declare a variable"
+    },
+    "Array Declaration": {
+        "prefix": "arr",
+        "body": "${1:int}[] ${2:name} := {${3:values}}",
+        "description": "Declare an array"
+    },
+    "Output Statement": {
+        "prefix": "out",
+        "body": "output(${1:value})",
+        "description": "Print to console"
+    },
+    "Output Multiple": {
+        "prefix": "outm",
+        "body": "output(${1:value1}, ${2:value2})",
+        "description": "Print multiple values"
+    },
+    "Input Statement": {
+        "prefix": "in",
+        "body": "${1:string} ${2:name} := input()",
+        "description": "Read input from user"
+    },
+    "Return Statement": {
+        "prefix": "ret",
+        "body": "return ${1:value}",
+        "description": "Return from function"
+    },
+    "Import Statement": {
+        "prefix": "import",
+        "body": "import \"${1:stdio.h}\"",
+        "description": "Import a header file"
+    },
+    "Break Statement": {
+        "prefix": "break",
+        "body": "break",
+        "description": "Break out of loop"
+    },
+    "Continue Statement": {
+        "prefix": "skip",
+        "body": "skip",
+        "description": "Skip iteration"
+    }
+}

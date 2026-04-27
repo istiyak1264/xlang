@@ -1,0 +1,71 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "xlang: build",
+            "type": "shell",
+            "command": "xlangc",
+            "args": [
+                "${file}",
+                "-o",
+                "${fileDirname}/${fileBasenameNoExtension}"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": {
+                "owner": "xlang",
+                "pattern": {
+                    "regexp": "^\\[Error\\] line (\\d+): (.*)$",
+                    "file": 0,
+                    "line": 1,
+                    "message": 2
+                }
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            }
+        },
+        {
+            "label": "xlang: run",
+            "type": "shell",
+            "command": "${fileDirname}/${fileBasenameNoExtension}",
+            "dependsOn": ["xlang: build"],
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            }
+        },
+        {
+            "label": "xlang: clean",
+            "type": "shell",
+            "command": "rm",
+            "args": [
+                "-f",
+                "${fileDirname}/${fileBasenameNoExtension}"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "xlang: compile and run",
+            "type": "shell",
+            "command": "xlangc",
+            "args": [
+                "${file}",
+                "-o",
+                "${fileDirname}/${fileBasenameNoExtension}",
+                "&&",
+                "${fileDirname}/${fileBasenameNoExtension}"
+            ],
+            "group": "none",
+            "problemMatcher": []
+        }
+    ]
+}
