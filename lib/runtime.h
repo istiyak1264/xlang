@@ -30,18 +30,18 @@ typedef struct {
     int     element_type;
 } XLangArray;
 
-XLangArray *xlang_array_new(int element_type);
-void        xlang_array_free(XLangArray *arr);
-void        xlang_array_push(XLangArray *arr, void *element);
-void       *xlang_array_get(XLangArray *arr, size_t index);
-size_t      xlang_array_size(XLangArray *arr);
+XLangArray *array_new(int element_type);
+void        array_free(XLangArray *arr);
+void        array_push(XLangArray *arr, void *element);
+void       *array_get(XLangArray *arr, size_t index);
+size_t      array_size(XLangArray *arr);
 
 /* ---------------------------------------------------------------
  * I/O
  * --------------------------------------------------------------- */
-char  *xlang_input_string(void);
-int    xlang_input_int(void);
-double xlang_input_double(void);
+char  *string_input(void);
+int    int_input(void);
+double double_input(void);
 void   xlang_print(const char *format, ...);
 void   xlang_println(const char *format, ...);
 
@@ -55,7 +55,7 @@ typedef enum {
     XLANG_ERROR_NULL_POINTER
 } XLangError;
 
-XLangError  xlang_get_last_error(void);
-const char *xlang_error_string(XLangError error);
+XLangError  get_last_error(void);
+const char *error_string(XLangError error);
 
 #endif

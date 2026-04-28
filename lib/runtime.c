@@ -14,7 +14,7 @@ static void *xlang_malloc(size_t size) {
 
 static void xlang_free(void *ptr) { if (ptr) free(ptr); }
 
-XLangString *xlang_string_new(const char *initial) {
+XLangString *string_new(const char *initial) {
     XLangString *str = (XLangString *)xlang_malloc(sizeof(XLangString));
     if (!str) return NULL;
     size_t len     = initial ? strlen(initial) : 0;
@@ -27,15 +27,15 @@ XLangString *xlang_string_new(const char *initial) {
     return str;
 }
 
-void xlang_string_free(XLangString *str) {
+void string_free(XLangString *str) {
     if (str) { if (str->data) xlang_free(str->data); xlang_free(str); }
 }
 
-int xlang_string_length(XLangString *str) {
+int string_length(XLangString *str) {
     return str ? (int)str->length : 0;
 }
 
-XLangArray *xlang_array_new(int element_type) {
+XLangArray *array_new(int element_type) {
     XLangArray *arr = (XLangArray *)xlang_malloc(sizeof(XLangArray));
     if (!arr) return NULL;
     arr->element_type = element_type;
@@ -47,11 +47,11 @@ XLangArray *xlang_array_new(int element_type) {
     return arr;
 }
 
-void xlang_array_free(XLangArray *arr) {
+void array_free(XLangArray *arr) {
     if (arr) { if (arr->data) xlang_free(arr->data); xlang_free(arr); }
 }
 
-void xlang_array_push(XLangArray *arr, void *element) {
+void array_push(XLangArray *arr, void *element) {
     if (!arr) return;
     if (arr->size >= arr->capacity) {
         size_t  new_cap  = arr->capacity * 2;
@@ -66,7 +66,7 @@ void xlang_array_push(XLangArray *arr, void *element) {
     arr->data[arr->size++] = element;
 }
 
-void *xlang_array_get(XLangArray *arr, size_t index) {
+void *array_get(XLangArray *arr, size_t index) {
     if (!arr || index >= arr->size) {
         last_error = XLANG_ERROR_OUT_OF_BOUNDS;
         return NULL;
@@ -74,9 +74,9 @@ void *xlang_array_get(XLangArray *arr, size_t index) {
     return arr->data[index];
 }
 
-size_t xlang_array_size(XLangArray *arr) { return arr ? arr->size : 0; }
+size_t array_size(XLangArray *arr) { return arr ? arr->size : 0; }
 
-char *xlang_input_string(void) {
+char *string_input(void) {
     char *buf = (char *)xlang_malloc(4096);
     if (!buf) return NULL;
     if (fgets(buf, 4096, stdin)) {
@@ -88,11 +88,11 @@ char *xlang_input_string(void) {
     return NULL;
 }
 
-int xlang_input_int(void) {
+int int_input(void) {
     int v; scanf("%d", &v); return v;
 }
 
-double xlang_input_double(void) {
+double double_input(void) {
     double v; scanf("%lf", &v); return v;
 }
 
@@ -111,9 +111,9 @@ void xlang_println(const char *format, ...) {
     printf("\n");
 }
 
-XLangError xlang_get_last_error(void) { return last_error; }
+XLangError get_last_error(void) { return last_error; }
 
-const char *xlang_error_string(XLangError error) {
+const char *error_string(XLangError error) {
     switch (error) {
         case XLANG_OK:                    return "No error";
         case XLANG_ERROR_OUT_OF_MEMORY:   return "Out of memory";
