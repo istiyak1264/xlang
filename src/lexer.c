@@ -27,16 +27,16 @@ void token_free(Token *t) {
 }
 
 static Token *make_token(TokenType type, const char *val, int line, int col) {
-    Token *t  = malloc(sizeof(Token));
-    t->type   = type;
-    t->value  = strdup(val ? val : "");
-    t->line   = line;
-    t->col    = col;
+    Token *t = malloc(sizeof(Token));
+    t->type  = type;
+    t->value = strdup(val ? val : "");
+    t->line  = line;
+    t->col   = col;
     return t;
 }
 
-static char cur(Lexer *l)   { return l->src[l->pos]; }
-static char peek(Lexer *l)  { return l->src[l->pos + 1]; }
+static char cur(Lexer *l)  { return l->src[l->pos]; }
+static char peek(Lexer *l) { return l->src[l->pos + 1]; }
 
 static void adv(Lexer *l) {
     if (l->src[l->pos] == '\0') return;
@@ -55,7 +55,7 @@ static void skip_line_comment(Lexer *l) {
 }
 
 static void skip_block_comment(Lexer *l) {
-    adv(l); adv(l); /* consume '/' '*' */
+    adv(l); adv(l);
     while (cur(l)) {
         if (cur(l) == '*' && peek(l) == '/') { adv(l); adv(l); return; }
         adv(l);
@@ -63,26 +63,34 @@ static void skip_block_comment(Lexer *l) {
     error(l->line, "unterminated block comment");
 }
 
+/* ── read_number: dynamic buffer ──────────────────────────────── */
 static Token *read_number(Lexer *l) {
     int  line = l->line, col = l->col;
-    char buf[256];
-    int  i = 0, is_float = 0;
+    int  cap = 64, i = 0, is_float = 0;
+    char *buf = malloc(cap);
+
     while (isdigit(cur(l)) ||
            (cur(l) == '.' && !is_float && isdigit(peek(l)))) {
         if (cur(l) == '.') is_float = 1;
-        if (i < 255) buf[i++] = cur(l);
+        if (i >= cap - 1) { cap *= 2; buf = realloc(buf, cap); }
+        buf[i++] = cur(l);
         adv(l);
     }
     buf[i] = '\0';
-    return make_token(is_float ? TOKEN_FLOAT_LIT : TOKEN_INT_LIT, buf, line, col);
+    Token *t = make_token(is_float ? TOKEN_FLOAT_LIT : TOKEN_INT_LIT, buf, line, col);
+    free(buf);
+    return t;
 }
 
+/* ── read_string: dynamic buffer ──────────────────────────────── */
 static Token *read_string(Lexer *l) {
     int  line = l->line, col = l->col;
-    char buf[4096];
-    int  i = 0;
-    adv(l); /* consume opening '"' */
+    int  cap = 256, i = 0;
+    char *buf = malloc(cap);
+    adv(l); /* skip opening " */
+
     while (cur(l) && cur(l) != '"') {
+        if (i >= cap - 2) { cap *= 2; buf = realloc(buf, cap); }
         if (cur(l) == '\\') {
             adv(l);
             switch (cur(l)) {
@@ -90,42 +98,36 @@ static Token *read_string(Lexer *l) {
                 case 't':  buf[i++] = '\t'; break;
                 case '"':  buf[i++] = '"';  break;
                 case '\\': buf[i++] = '\\'; break;
-                default:   buf[i++] = cur(l); break;
+                default:   buf[i++] = '\\'; buf[i++] = cur(l); break;
             }
         } else {
-            if (i < 4095) buf[i++] = cur(l);
+            buf[i++] = cur(l);
         }
         adv(l);
     }
     if (cur(l) == '"') adv(l);
-    else error(line, "unterminated string literal");
+    else { free(buf); error(line, "unterminated string literal"); }
     buf[i] = '\0';
-    return make_token(TOKEN_STRING_LIT, buf, line, col);
-}
-
-static int is_operator_char(char c) {
-    return c == '-' || c == '+' || c == '*' || c == '/' ||
-           c == '%' || c == '&' || c == '|' || c == '^' ||
-           c == '=' || c == '!' || c == '<' || c == '>';
+    Token *t = make_token(TOKEN_STRING_LIT, buf, line, col);
+    free(buf);
+    return t;
 }
 
 static Token *read_operator(Lexer *l) {
     int  line = l->line, col = l->col;
 
     /* Two-char operators */
-    if (cur(l) == ':' && peek(l) == '=') { adv(l); adv(l); return make_token(TOKEN_ASSIGN,  ":=", line, col); }
-    if (cur(l) == '+' && peek(l) == '+') { adv(l); adv(l); return make_token(TOKEN_INC,     "++", line, col); }
-    if (cur(l) == '-' && peek(l) == '-') { adv(l); adv(l); return make_token(TOKEN_DEC,     "--", line, col); }
-    if (cur(l) == '&' && peek(l) == '&') { adv(l); adv(l); return make_token(TOKEN_AND,     "&&", line, col); }
-    if (cur(l) == '|' && peek(l) == '|') { adv(l); adv(l); return make_token(TOKEN_OR,      "||", line, col); }
-    if (cur(l) == '=' && peek(l) == '=') { adv(l); adv(l); return make_token(TOKEN_EQ,      "==", line, col); }
-    if (cur(l) == '!' && peek(l) == '=') { adv(l); adv(l); return make_token(TOKEN_NE,      "!=", line, col); }
-    if (cur(l) == '<' && peek(l) == '=') { adv(l); adv(l); return make_token(TOKEN_LE,      "<=", line, col); }
-    if (cur(l) == '>' && peek(l) == '=') { adv(l); adv(l); return make_token(TOKEN_GE,      ">=", line, col); }
+    if (cur(l) == ':' && peek(l) == '=') { adv(l); adv(l); return make_token(TOKEN_ASSIGN,   ":=", line, col); }
+    if (cur(l) == '+' && peek(l) == '+') { adv(l); adv(l); return make_token(TOKEN_INC,      "++", line, col); }
+    if (cur(l) == '-' && peek(l) == '-') { adv(l); adv(l); return make_token(TOKEN_DEC,      "--", line, col); }
+    if (cur(l) == '&' && peek(l) == '&') { adv(l); adv(l); return make_token(TOKEN_AND,      "&&", line, col); }
+    if (cur(l) == '|' && peek(l) == '|') { adv(l); adv(l); return make_token(TOKEN_OR,       "||", line, col); }
+    if (cur(l) == '=' && peek(l) == '=') { adv(l); adv(l); return make_token(TOKEN_EQ,       "==", line, col); }
+    if (cur(l) == '!' && peek(l) == '=') { adv(l); adv(l); return make_token(TOKEN_NE,       "!=", line, col); }
+    if (cur(l) == '<' && peek(l) == '=') { adv(l); adv(l); return make_token(TOKEN_LE,       "<=", line, col); }
+    if (cur(l) == '>' && peek(l) == '=') { adv(l); adv(l); return make_token(TOKEN_GE,       ">=", line, col); }
 
-    /* Single-char */
-    char c = cur(l);
-    adv(l);
+    char c = cur(l); adv(l);
     switch (c) {
         case '+': return make_token(TOKEN_PLUS,      "+", line, col);
         case '-': return make_token(TOKEN_MINUS,     "-", line, col);
@@ -136,7 +138,8 @@ static Token *read_operator(Lexer *l) {
         case '!': return make_token(TOKEN_NOT,       "!", line, col);
         case '<': return make_token(TOKEN_LT,        "<", line, col);
         case '>': return make_token(TOKEN_GT,        ">", line, col);
-        case '=': return make_token(TOKEN_ASSIGN,    "=", line, col);
+        /* plain '=' is reassignment, distinct from ':=' */
+        case '=': return make_token(TOKEN_ASSIGN_EQ, "=", line, col);
         case '(': return make_token(TOKEN_LPAREN,    "(", line, col);
         case ')': return make_token(TOKEN_RPAREN,    ")", line, col);
         case '{': return make_token(TOKEN_LBRACE,    "{", line, col);
@@ -180,56 +183,66 @@ static const struct { const char *w; TokenType t; } kw[] = {
 
 static Token *read_ident(Lexer *l) {
     int  line = l->line, col = l->col;
-    char buf[256];
-    int  i = 0;
+    int  cap = 64, i = 0;
+    char *buf = malloc(cap);
+
     while (isalnum(cur(l)) || cur(l) == '_') {
-        if (i < 255) buf[i++] = cur(l);
+        if (i >= cap - 1) { cap *= 2; buf = realloc(buf, cap); }
+        buf[i++] = cur(l);
         adv(l);
     }
     buf[i] = '\0';
 
-    /* Check keywords */
-    for (int k = 0; kw[k].w; k++)
-        if (strcmp(buf, kw[k].w) == 0)
-            return make_token(kw[k].t, buf, line, col);
-
-    /* ---- "else if" two-token sequence → single ELSE_IF token ---- */
-    /* We already consumed "else"; check if next non-space word is "if" */
-    if (strcmp(buf, "else") == 0) {
-        /* peek ahead through spaces (not newlines) */
-        int save_pos  = l->pos;
-        int save_line = l->line;
-        int save_col  = l->col;
-        /* skip spaces/tabs only – not newlines */
-        while (l->src[l->pos] == ' ' || l->src[l->pos] == '\t') l->pos++;
-        if (l->src[l->pos] == 'i' && l->src[l->pos+1] == 'f' &&
-            !isalnum(l->src[l->pos+2]) && l->src[l->pos+2] != '_') {
-            l->pos += 2;
-            l->col  = save_col + (l->pos - save_pos);
-            return make_token(TOKEN_ELSE_IF, "else if", line, col);
+    /* keywords */
+    for (int k = 0; kw[k].w; k++) {
+        if (strcmp(buf, kw[k].w) == 0) {
+            /* special: "else" may be followed by "if" */
+            if (kw[k].t == TOKEN_ELSE) {
+                int save_pos  = l->pos;
+                int save_line = l->line;
+                int save_col  = l->col;
+                while (l->src[l->pos] == ' ' || l->src[l->pos] == '\t') l->pos++;
+                if (l->src[l->pos] == 'i' && l->src[l->pos+1] == 'f' &&
+                    !isalnum(l->src[l->pos+2]) && l->src[l->pos+2] != '_') {
+                    l->pos += 2;
+                    l->col  = save_col + (l->pos - save_pos);
+                    Token *t = make_token(TOKEN_ELSE_IF, "else if", line, col);
+                    free(buf);
+                    return t;
+                }
+                l->pos  = save_pos;
+                l->line = save_line;
+                l->col  = save_col;
+            }
+            Token *t = make_token(kw[k].t, buf, line, col);
+            free(buf);
+            return t;
         }
-        /* not "else if" – restore and return plain ELSE */
-        l->pos  = save_pos;
-        l->line = save_line;
-        l->col  = save_col;
-        return make_token(TOKEN_ELSE, buf, line, col);
     }
 
     /* English comparison aliases */
-    if (strcmp(buf, "eq") == 0) return make_token(TOKEN_EQ, "==", line, col);
-    if (strcmp(buf, "ne") == 0) return make_token(TOKEN_NE, "!=", line, col);
-    if (strcmp(buf, "gt") == 0) return make_token(TOKEN_GT, ">",  line, col);
-    if (strcmp(buf, "lt") == 0) return make_token(TOKEN_LT, "<",  line, col);
-    if (strcmp(buf, "ge") == 0) return make_token(TOKEN_GE, ">=", line, col);
-    if (strcmp(buf, "le") == 0) return make_token(TOKEN_LE, "<=", line, col);
+    TokenType alias = 0;
+    if      (strcmp(buf, "eq") == 0) alias = TOKEN_EQ;
+    else if (strcmp(buf, "ne") == 0) alias = TOKEN_NE;
+    else if (strcmp(buf, "gt") == 0) alias = TOKEN_GT;
+    else if (strcmp(buf, "lt") == 0) alias = TOKEN_LT;
+    else if (strcmp(buf, "ge") == 0) alias = TOKEN_GE;
+    else if (strcmp(buf, "le") == 0) alias = TOKEN_LE;
 
-    return make_token(TOKEN_IDENT, buf, line, col);
+    if (alias) {
+        Token *t = make_token(alias, buf, line, col);
+        free(buf);
+        return t;
+    }
+
+    Token *t = make_token(TOKEN_IDENT, buf, line, col);
+    free(buf);
+    return t;
 }
 
 Token *lexer_next(Lexer *l) {
 restart:
     skip_spaces(l);
-
     int  line = l->line, col = l->col;
     char c    = cur(l);
 
@@ -239,17 +252,12 @@ restart:
     if (c == '/' && peek(l) == '/') { skip_line_comment(l);  goto restart; }
     if (c == '/' && peek(l) == '*') { skip_block_comment(l); goto restart; }
 
-    if (isdigit(c))            return read_number(l);
-    if (c == '"')              return read_string(l);
+    if (isdigit(c))             return read_number(l);
+    if (c == '"')               return read_string(l);
     if (isalpha(c) || c == '_') return read_ident(l);
-    if (is_operator_char(c) || c == ':' || c == ';' ||
-        c == '(' || c == ')' || c == '{' || c == '}' ||
-        c == '[' || c == ']' || c == ',' || c == '.')
-        return read_operator(l);
 
-    char buf[2] = {c, '\0'};
-    adv(l);
-    return make_token(TOKEN_UNKNOWN, buf, line, col);
+    /* everything else is operator / punctuation */
+    return read_operator(l);
 }
 
 const char *token_type_name(TokenType t) {
@@ -279,6 +287,7 @@ const char *token_type_name(TokenType t) {
         case TOKEN_OUTPUT:      return "output";
         case TOKEN_INPUT:       return "input";
         case TOKEN_ASSIGN:      return ":=";
+        case TOKEN_ASSIGN_EQ:   return "=";
         case TOKEN_PLUS:        return "+";
         case TOKEN_MINUS:       return "-";
         case TOKEN_STAR:        return "*";

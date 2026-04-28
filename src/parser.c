@@ -361,7 +361,7 @@ static ASTNode *parse_if(Parser *p) {
         int eli = p->current->line;
         advance(p);
         ASTNode *el = ast_node_new(NODE_IF, eli);
-        el->is_else = 2;
+        el->else_kind = ELSE_BARE;
         ast_add_child(el, parse_colon_block(p));
         ast_add_child(n, el);
         while (check(p, TOKEN_NEWLINE)) advance(p);

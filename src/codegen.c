@@ -161,8 +161,8 @@ static void gen_output(CodeGen *cg, ASTNode *node) {
 }
 
 static void gen_if(CodeGen *cg, ASTNode *node) {
-    /* node->is_else:  0 = if,  1 = else if,  2 = bare else */
-    if (node->is_else == 2) {
+    /* node->else_kind: ELSE_NONE=0, ELSE_IF=1, ELSE_BARE=2 */
+    if (node->else_kind == ELSE_BARE) {
         /* bare else – child[0] is the body block */
         fprintf(cg->out, " else {\n");
         cg->indent++;
@@ -170,7 +170,7 @@ static void gen_if(CodeGen *cg, ASTNode *node) {
         cg->indent--;
         do_indent(cg);
         fprintf(cg->out, "}");
-    } else if (node->is_else == 1) {
+    } else if (node->else_kind == ELSE_IF) {
         /* else if – child[0]=cond, child[1]=body, child[2..]=chain */
         fprintf(cg->out, " else if (");
         gen_expr(cg, node->children[0]);

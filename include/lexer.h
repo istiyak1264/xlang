@@ -15,7 +15,8 @@ typedef enum {
     /* Identifier */
     TOKEN_IDENT,
     /* Assignment */
-    TOKEN_ASSIGN,
+    TOKEN_ASSIGN,       /* :=  */
+    TOKEN_ASSIGN_EQ,    /* =   (reassignment) */
     /* Arithmetic */
     TOKEN_PLUS, TOKEN_MINUS, TOKEN_STAR, TOKEN_SLASH, TOKEN_PERCENT,
     TOKEN_INC, TOKEN_DEC,

@@ -1,7 +1,7 @@
 {
     "files.associations": {
-        "*.x": "xlang",
-        "*.xl": "xlang",
+        "*.x":     "xlang",
+        "*.xl":    "xlang",
         "*.xlang": "xlang"
     },
     "[xlang]": {
@@ -9,7 +9,6 @@
         "editor.insertSpaces": true,
         "editor.detectIndentation": false,
         "editor.formatOnSave": true,
-        "editor.formatOnPaste": true,
         "editor.rulers": [80, 120],
         "editor.wordWrap": "off",
         "files.encoding": "utf8",
@@ -20,5 +19,18 @@
     "xlang.runInTerminal": true,
     "xlang.formatOnSave": true,
     "xlang.lintOnSave": true,
-    "xlang.enableIntelliSense": true
+    "xlang.enableIntelliSense": true,
+
+    "code-runner.executorMap": {
+        "xlang": "cd $dir && xlangc $fileName -o $fileNameWithoutExt && ./$fileNameWithoutExt"
+    },
+    "code-runner.runInTerminal": true,
+    "code-runner.saveFileBeforeRun": true,
+
+    "terminal.integrated.env.linux": {
+        "PATH": "/usr/local/bin:${env:PATH}"
+    },
+    "terminal.integrated.env.osx": {
+        "PATH": "/usr/local/bin:${env:PATH}"
+    }
 }

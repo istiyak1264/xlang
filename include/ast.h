@@ -12,6 +12,12 @@ typedef enum {
 } VarType;
 
 typedef enum {
+    ELSE_NONE = 0,   /* leading if */
+    ELSE_IF   = 1,   /* else if branch */
+    ELSE_BARE = 2    /* bare else */
+} ElseKind;
+
+typedef enum {
     NODE_PROGRAM,
     NODE_IMPORT,
     NODE_FUNCTION_DEF,
@@ -49,9 +55,10 @@ typedef struct ASTNode {
     long long ival;
     double    fval;
     VarType   vtype;
-    int       is_else;          
+    ElseKind  else_kind;
     struct ASTNode **children;
     int              child_count;
+    int              child_cap;
 } ASTNode;
 
 ASTNode *ast_node_new(NodeType type, int line);

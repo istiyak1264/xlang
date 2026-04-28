@@ -4,16 +4,22 @@
 #include <stdio.h>
 
 ASTNode *ast_node_new(NodeType type, int line) {
-    ASTNode *n = calloc(1, sizeof(ASTNode));
-    n->type = type;
-    n->line = line;
+    ASTNode *n     = calloc(1, sizeof(ASTNode));
+    n->type        = type;
+    n->line        = line;
+    n->child_cap   = 4;
+    n->children    = malloc(n->child_cap * sizeof(ASTNode *));
+    n->child_count = 0;
     return n;
 }
 
 void ast_add_child(ASTNode *parent, ASTNode *child) {
     if (!child) return;
-    parent->children = realloc(parent->children,
-                               sizeof(ASTNode *) * (parent->child_count + 1));
+    if (parent->child_count >= parent->child_cap) {
+        parent->child_cap *= 2;
+        parent->children = realloc(parent->children,
+                                   parent->child_cap * sizeof(ASTNode *));
+    }
     parent->children[parent->child_count++] = child;
 }
 
@@ -64,9 +70,10 @@ void ast_print(ASTNode *node, int indent) {
     if (!node) return;
     for (int i = 0; i < indent; i++) printf("  ");
     printf("[%s]", node_type_name(node->type));
-    if (node->sval)                   printf(" '%s'", node->sval);
-    if (node->type == NODE_INT_LIT)   printf(" %lld", node->ival);
-    if (node->type == NODE_FLOAT_LIT) printf(" %g",   node->fval);
+    if (node->sval)                   printf(" '%s'",  node->sval);
+    if (node->type == NODE_INT_LIT)   printf(" %lld",  node->ival);
+    if (node->type == NODE_FLOAT_LIT) printf(" %g",    node->fval);
+    if (node->vtype != TYPE_UNKNOWN)  printf(" <%d>",  (int)node->vtype);
     printf("\n");
     for (int i = 0; i < node->child_count; i++)
         ast_print(node->children[i], indent + 1);

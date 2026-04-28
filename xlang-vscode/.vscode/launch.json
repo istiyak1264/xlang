@@ -2,36 +2,45 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Run Extension",
-            "type": "extensionHost",
+            "name": "XLang: Compile & Run (F5)",
+            "type": "node",
             "request": "launch",
-            "runtimeExecutable": "${execPath}",
-            "args": [
-                "--extensionDevelopmentPath=${workspaceFolder}"
+            "runtimeExecutable": "/bin/bash",
+            "runtimeArgs": [
+                "-c",
+                "xlangc '${file}' -o '${fileDirname}/${fileBasenameNoExtension}' && '${fileDirname}/${fileBasenameNoExtension}'"
             ],
-            "outFiles": [
-                "${workspaceFolder}/extension.js"
-            ]
+            "console": "integratedTerminal",
+            "preLaunchTask": "",
+            "when": "resourceLangId == xlang"
         },
         {
-            "name": "Launch XLang Program",
+            "name": "XLang: Debug with GDB",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/${fileBasenameNoExtension}",
+            "program": "${fileDirname}/${fileBasenameNoExtension}",
             "args": [],
             "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
+            "cwd": "${fileDirname}",
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb",
+            "preLaunchTask": "xlang: compile",
             "setupCommands": [
                 {
                     "description": "Enable pretty-printing for gdb",
                     "text": "-enable-pretty-printing",
                     "ignoreFailures": true
                 }
-            ],
-            "preLaunchTask": "xlang: build"
+            ]
+        },
+        {
+            "name": "XLang Extension: Debug (Dev)",
+            "type": "extensionHost",
+            "request": "launch",
+            "runtimeExecutable": "${execPath}",
+            "args": ["--extensionDevelopmentPath=${workspaceFolder}/xlang-vscode"],
+            "outFiles": ["${workspaceFolder}/xlang-vscode/extension.js"]
         }
     ]
 }

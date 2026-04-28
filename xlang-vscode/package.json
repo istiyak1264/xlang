@@ -1,49 +1,34 @@
 {
     "name": "xlang",
     "displayName": "XLang Language Support",
-    "description": "Complete XLang language support with compilation and IntelliSense",
-    "version": "1.0.1",
+    "description": "XLang language support: syntax highlighting, snippets, compile and run",
+    "version": "1.0.2",
     "publisher": "istiyak1264",
     "author": {
         "name": "Istiyak Ahmed",
         "email": "iamistiyakooo@gmail.com"
     },
     "license": "MIT",
-    "homepage": "https://github.com/istiyak1264/xlang",
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/istiyak1264/xlang"
-    },
     "icon": "icons/icon.png",
-    "galleryBanner": {
-        "color": "#1e1e1e",
-        "theme": "dark"
-    },
-    "categories": [
-        "Programming Languages",
-        "Linters",
-        "Formatters"
-    ],
-    "keywords": [
-        "xlang",
-        "compiler",
-        "language",
-        "programming",
-        "c-like"
-    ],
-    "engines": {
-        "vscode": "^1.60.0"
-    },
+    "galleryBanner": { "color": "#1e1e1e", "theme": "dark" },
+    "categories": ["Programming Languages", "Snippets"],
+    "keywords": ["xlang", "compiler", "language", "c-like"],
+    "engines": { "vscode": "^1.60.0" },
     "activationEvents": [
-        "onLanguage:xlang"
+        "onLanguage:xlang",
+        "workspaceContains:**/*.x",
+        "workspaceContains:**/*.xl",
+        "workspaceContains:**/*.xlang"
     ],
     "main": "./extension.js",
     "contributes": {
         "languages": [
             {
                 "id": "xlang",
-                "aliases": ["XLang", "xlang"],
+                "aliases": ["XLang", "xlang", "XL"],
                 "extensions": [".xlang", ".xl", ".x"],
+                "filenames": [],
+                "mimetypes": ["text/x-xlang"],
                 "configuration": "./language-configuration.json"
             }
         ],
@@ -74,6 +59,16 @@
             {
                 "command": "xlang.compileRun",
                 "title": "XLang: Compile and Run",
+                "category": "XLang"
+            },
+            {
+                "command": "xlang.build",
+                "title": "XLang: Build Project",
+                "category": "XLang"
+            },
+            {
+                "command": "xlang.clean",
+                "title": "XLang: Clean Build Files",
                 "category": "XLang"
             }
         ],
@@ -119,27 +114,37 @@
                 "xlang.compilerPath": {
                     "type": "string",
                     "default": "xlangc",
-                    "description": "Path to XLang compiler executable"
+                    "description": "Path to the XLang compiler executable (xlangc)"
                 },
                 "xlang.compilerArgs": {
                     "type": "array",
                     "default": [],
-                    "description": "Additional arguments to pass to the compiler"
+                    "description": "Extra arguments passed to xlangc"
                 },
                 "xlang.runInTerminal": {
                     "type": "boolean",
                     "default": true,
                     "description": "Run compiled programs in the integrated terminal"
                 },
+                "xlang.outputDirectory": {
+                    "type": "string",
+                    "default": "${fileDirname}",
+                    "description": "Directory for compiled executables (default: same as source file)"
+                },
                 "xlang.formatOnSave": {
                     "type": "boolean",
                     "default": true,
-                    "description": "Format XLang files automatically on save"
+                    "description": "Auto-format XLang files on save"
                 },
-                "xlang.outputDirectory": {
-                    "type": "string",
-                    "default": ".",
-                    "description": "Directory for compiled executables"
+                "xlang.lintOnSave": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Lint XLang files on save"
+                },
+                "xlang.enableIntelliSense": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable IntelliSense completions"
                 }
             }
         }
