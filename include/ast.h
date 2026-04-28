@@ -2,8 +2,13 @@
 #define XLANG_AST_H
 
 typedef enum {
-    TYPE_UNKNOWN, TYPE_INT, TYPE_FLOAT, TYPE_DOUBLE,
-    TYPE_STRING, TYPE_ARRAY, TYPE_VOID
+    TYPE_UNKNOWN = 0,
+    TYPE_INT     = 1,
+    TYPE_FLOAT   = 2,
+    TYPE_DOUBLE  = 3,
+    TYPE_STRING  = 4,
+    TYPE_ARRAY   = 5,
+    TYPE_VOID    = 6
 } VarType;
 
 typedef enum {
@@ -44,7 +49,7 @@ typedef struct ASTNode {
     long long ival;
     double    fval;
     VarType   vtype;
-    int       is_else;
+    int       is_else;          
     struct ASTNode **children;
     int              child_count;
 } ASTNode;

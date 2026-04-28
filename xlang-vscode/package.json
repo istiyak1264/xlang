@@ -1,12 +1,12 @@
 {
     "name": "xlang",
     "displayName": "XLang Language Support",
-    "description": "Complete XLang language support with compilation, debugging, and IntelliSense",
-    "version": "1.0.0",
+    "description": "Complete XLang language support with compilation and IntelliSense",
+    "version": "1.0.1",
     "publisher": "istiyak1264",
     "author": {
         "name": "Istiyak Ahmed",
-        "email": ""
+        "email": "iamistiyakooo@gmail.com"
     },
     "license": "MIT",
     "homepage": "https://github.com/istiyak1264/xlang",
@@ -14,17 +14,13 @@
         "type": "git",
         "url": "https://github.com/istiyak1264/xlang"
     },
-    "bugs": {
-        "url": "https://github.com/istiyak1264/xlang/issues"
-    },
-    "icon": "icons/xlang-icon.png",
+    "icon": "icons/icon.png",
     "galleryBanner": {
         "color": "#1e1e1e",
         "theme": "dark"
     },
     "categories": [
         "Programming Languages",
-        "Debuggers",
         "Linters",
         "Formatters"
     ],
@@ -33,35 +29,13 @@
         "compiler",
         "language",
         "programming",
-        "c-like",
-        "indentation",
-        "istiyak1264"
-    ],
-    "badges": [
-        {
-            "url": "https://img.shields.io/github/stars/istiyak1264/xlang",
-            "href": "https://github.com/istiyak1264/xlang",
-            "description": "GitHub stars"
-        },
-        {
-            "url": "https://img.shields.io/github/forks/istiyak1264/xlang",
-            "href": "https://github.com/istiyak1264/xlang",
-            "description": "GitHub forks"
-        },
-        {
-            "url": "https://img.shields.io/github/issues/istiyak1264/xlang",
-            "href": "https://github.com/istiyak1264/xlang/issues",
-            "description": "GitHub issues"
-        }
+        "c-like"
     ],
     "engines": {
         "vscode": "^1.60.0"
     },
     "activationEvents": [
-        "onLanguage:xlang",
-        "onCommand:xlang.compile",
-        "onCommand:xlang.run",
-        "onCommand:xlang.build"
+        "onLanguage:xlang"
     ],
     "main": "./extension.js",
     "contributes": {
@@ -69,7 +43,7 @@
             {
                 "id": "xlang",
                 "aliases": ["XLang", "xlang"],
-                "extensions": [".x", ".xl", ".xlang"],
+                "extensions": [".xlang", ".xl", ".x"],
                 "configuration": "./language-configuration.json"
             }
         ],
@@ -95,16 +69,6 @@
             {
                 "command": "xlang.run",
                 "title": "XLang: Run Current File",
-                "category": "XLang"
-            },
-            {
-                "command": "xlang.build",
-                "title": "XLang: Build Project",
-                "category": "XLang"
-            },
-            {
-                "command": "xlang.clean",
-                "title": "XLang: Clean Build Files",
                 "category": "XLang"
             },
             {
@@ -147,13 +111,6 @@
                     "group": "xlang@3",
                     "when": "resourceLangId == xlang"
                 }
-            ],
-            "explorer/context": [
-                {
-                    "command": "xlang.compile",
-                    "group": "xlang",
-                    "when": "resourceLangId == xlang"
-                }
             ]
         },
         "configuration": {
@@ -179,34 +136,12 @@
                     "default": true,
                     "description": "Format XLang files automatically on save"
                 },
-                "xlang.lintOnSave": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Lint XLang files automatically on save"
-                },
-                "xlang.enableIntelliSense": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Enable IntelliSense for XLang"
-                },
                 "xlang.outputDirectory": {
                     "type": "string",
                     "default": ".",
                     "description": "Directory for compiled executables"
                 }
             }
-        },
-        "problemMatchers": [
-            {
-                "name": "xlang",
-                "owner": "xlang",
-                "pattern": {
-                    "regexp": "^\\[Error\\] line (\\d+): (.*)$",
-                    "file": 0,
-                    "line": 1,
-                    "message": 2
-                }
-            }
-        ]
+        }
     }
 }

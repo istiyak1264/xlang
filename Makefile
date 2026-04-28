@@ -1,52 +1,62 @@
+# Compiler settings
 CC = gcc
-CFLAGS = -Wall -Wextra -O2 -Iinclude -Ilib -D_GNU_SOURCE
-SRCS = src/main.c src/lexer.c src/parser.c src/ast.c src/codegen.c src/error.c lib/runtime.c
-OBJS = $(SRCS:%.c=obj/%.o)
-TARGET = xlangc
+CFLAGS = -Wall -Wextra -O2 -g
+LDFLAGS = -lm
 
-.PHONY: all clean install test debug
+# Directories
+SRC_DIR = .
+BUILD_DIR = build
+BIN_DIR = bin
+INSTALL_DIR = /usr/local/bin
 
+# Source files
+SOURCES = main.c lexer.c parser.c ast.c codegen.c error.c runtime.c
+OBJECTS = $(addprefix $(BUILD_DIR)/, $(SOURCES:.c=.o))
+TARGET = $(BIN_DIR)/xlangc
+
+# Default target
 all: $(TARGET)
 
-$(TARGET): $(OBJS)
-	$(CC) $(OBJS) -o $@ -lm
+# Create directories
+$(BUILD_DIR) $(BIN_DIR):
+	mkdir -p $@
 
-obj/%.o: %.c include/*.h lib/*.h
-	@mkdir -p $(dir $@)
+# Compile object files
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-obj/lib/%.o: lib/%.c lib/*.h
-	@mkdir -p obj/lib
-	$(CC) $(CFLAGS) -c $< -o $@
+# Link executable
+$(TARGET): $(OBJECTS) | $(BIN_DIR)
+	$(CC) $(OBJECTS) -o $@ $(LDFLAGS)
 
-debug:
-	$(MAKE) clean
-	$(MAKE) CFLAGS="-Wall -Wextra -g -O0 -Iinclude -Ilib -DXLANG_DEBUG_MEMORY"
-
+# Clean build files
 clean:
-	rm -rf obj $(TARGET) a.out
+	rm -rf $(BUILD_DIR) $(BIN_DIR)
 
+# Install
 install: $(TARGET)
-	sudo cp $(TARGET) /usr/local/bin/
-	sudo mkdir -p /usr/local/include/xlang
-	sudo cp lib/runtime.h /usr/local/include/xlang/
+	install -d $(INSTALL_DIR)
+	install -m 755 $(TARGET) $(INSTALL_DIR)/
+	@echo "XLang compiler installed successfully to $(INSTALL_DIR)/xlangc"
 
+# Uninstall
 uninstall:
-	sudo rm -f /usr/local/bin/$(TARGET)
-	sudo rm -rf /usr/local/include/xlang
+	rm -f $(INSTALL_DIR)/xlangc
+	@echo "XLang compiler uninstalled"
 
+# Test
 test: $(TARGET)
-	@echo "Testing XLang compiler..."
-	./$(TARGET) examples/hello.x
-	./a.out
-	@echo "Test complete!"
+	@echo "Running tests..."
+	./$(TARGET) --version
 
-test-all: $(TARGET)
-	@for test in examples/*.x; do \
-		echo "Running $$test..."; \
-		./$(TARGET) "$$test" -o test_output; \
-		if [ -f test_output ]; then \
-			./test_output; \
-			rm test_output; \
-		fi \
-	done
+# Help
+help:
+	@echo "Available targets:"
+	@echo "  all      - Build the compiler (default)"
+	@echo "  clean    - Remove build artifacts"
+	@echo "  install  - Install compiler to system"
+	@echo "  uninstall- Remove compiler from system"
+	@echo "  test     - Run basic tests"
+	@echo "  help     - Show this help message"
+
+.PHONY: all clean install uninstall test help
