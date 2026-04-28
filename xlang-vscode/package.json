@@ -3,14 +3,24 @@
     "displayName": "XLang Language Support",
     "description": "Complete XLang language support with compilation, debugging, and IntelliSense",
     "version": "1.0.0",
-    "publisher": "xlang",
-    "icon": "icons/xlang-icon.png",
+    "publisher": "istiyak1264",
+    "author": {
+        "name": "Istiyak Ahmed",
+        "email": ""
+    },
+    "license": "MIT",
+    "homepage": "https://github.com/istiyak1264/xlang",
     "repository": {
         "type": "git",
-        "url": "https://github.com/xlang/xlang-vscode"
+        "url": "https://github.com/istiyak1264/xlang"
     },
-    "engines": {
-        "vscode": "^1.60.0"
+    "bugs": {
+        "url": "https://github.com/istiyak1264/xlang/issues"
+    },
+    "icon": "icons/xlang-icon.png",
+    "galleryBanner": {
+        "color": "#1e1e1e",
+        "theme": "dark"
     },
     "categories": [
         "Programming Languages",
@@ -23,8 +33,30 @@
         "compiler",
         "language",
         "programming",
-        "c-like"
+        "c-like",
+        "indentation",
+        "istiyak1264"
     ],
+    "badges": [
+        {
+            "url": "https://img.shields.io/github/stars/istiyak1264/xlang",
+            "href": "https://github.com/istiyak1264/xlang",
+            "description": "GitHub stars"
+        },
+        {
+            "url": "https://img.shields.io/github/forks/istiyak1264/xlang",
+            "href": "https://github.com/istiyak1264/xlang",
+            "description": "GitHub forks"
+        },
+        {
+            "url": "https://img.shields.io/github/issues/istiyak1264/xlang",
+            "href": "https://github.com/istiyak1264/xlang/issues",
+            "description": "GitHub issues"
+        }
+    ],
+    "engines": {
+        "vscode": "^1.60.0"
+    },
     "activationEvents": [
         "onLanguage:xlang",
         "onCommand:xlang.compile",
@@ -96,11 +128,6 @@
                 "command": "xlang.compileRun",
                 "key": "f5",
                 "when": "editorLangId == xlang"
-            },
-            {
-                "command": "xlang.build",
-                "key": "ctrl+shift+b",
-                "when": "editorLangId == xlang && workspaceFolderCount > 0"
             }
         ],
         "menus": {
