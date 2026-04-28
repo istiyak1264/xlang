@@ -63,7 +63,6 @@ static void skip_block_comment(Lexer *l) {
     error(l->line, "unterminated block comment");
 }
 
-/* ── read_number: dynamic buffer ──────────────────────────────── */
 static Token *read_number(Lexer *l) {
     int  line = l->line, col = l->col;
     int  cap = 64, i = 0, is_float = 0;
@@ -82,7 +81,6 @@ static Token *read_number(Lexer *l) {
     return t;
 }
 
-/* ── read_string: dynamic buffer ──────────────────────────────── */
 static Token *read_string(Lexer *l) {
     int  line = l->line, col = l->col;
     int  cap = 256, i = 0;
@@ -113,19 +111,37 @@ static Token *read_string(Lexer *l) {
     return t;
 }
 
+static Token *read_angle_string(Lexer *l) {
+    int line = l->line, col = l->col;
+    int cap = 256, i = 0;
+    char *buf = malloc(cap);
+    adv(l); /* skip '<' */
+
+    while (cur(l) && cur(l) != '>') {
+        if (i >= cap - 1) { cap *= 2; buf = realloc(buf, cap); }
+        buf[i++] = cur(l);
+        adv(l);
+    }
+    if (cur(l) == '>') adv(l);
+    else { free(buf); error(line, "unterminated angle-bracket import"); }
+    buf[i] = '\0';
+    Token *t = make_token(TOKEN_STRING_LIT, buf, line, col);
+    free(buf);
+    return t;
+}
+
 static Token *read_operator(Lexer *l) {
     int  line = l->line, col = l->col;
 
-    /* Two-char operators */
-    if (cur(l) == ':' && peek(l) == '=') { adv(l); adv(l); return make_token(TOKEN_ASSIGN,   ":=", line, col); }
-    if (cur(l) == '+' && peek(l) == '+') { adv(l); adv(l); return make_token(TOKEN_INC,      "++", line, col); }
-    if (cur(l) == '-' && peek(l) == '-') { adv(l); adv(l); return make_token(TOKEN_DEC,      "--", line, col); }
-    if (cur(l) == '&' && peek(l) == '&') { adv(l); adv(l); return make_token(TOKEN_AND,      "&&", line, col); }
-    if (cur(l) == '|' && peek(l) == '|') { adv(l); adv(l); return make_token(TOKEN_OR,       "||", line, col); }
-    if (cur(l) == '=' && peek(l) == '=') { adv(l); adv(l); return make_token(TOKEN_EQ,       "==", line, col); }
-    if (cur(l) == '!' && peek(l) == '=') { adv(l); adv(l); return make_token(TOKEN_NE,       "!=", line, col); }
-    if (cur(l) == '<' && peek(l) == '=') { adv(l); adv(l); return make_token(TOKEN_LE,       "<=", line, col); }
-    if (cur(l) == '>' && peek(l) == '=') { adv(l); adv(l); return make_token(TOKEN_GE,       ">=", line, col); }
+    if (cur(l) == ':' && peek(l) == '=') { adv(l); adv(l); return make_token(TOKEN_ASSIGN,    ":=", line, col); }
+    if (cur(l) == '+' && peek(l) == '+') { adv(l); adv(l); return make_token(TOKEN_INC,       "++", line, col); }
+    if (cur(l) == '-' && peek(l) == '-') { adv(l); adv(l); return make_token(TOKEN_DEC,       "--", line, col); }
+    if (cur(l) == '&' && peek(l) == '&') { adv(l); adv(l); return make_token(TOKEN_AND,       "&&", line, col); }
+    if (cur(l) == '|' && peek(l) == '|') { adv(l); adv(l); return make_token(TOKEN_OR,        "||", line, col); }
+    if (cur(l) == '=' && peek(l) == '=') { adv(l); adv(l); return make_token(TOKEN_EQ,        "==", line, col); }
+    if (cur(l) == '!' && peek(l) == '=') { adv(l); adv(l); return make_token(TOKEN_NE,        "!=", line, col); }
+    if (cur(l) == '<' && peek(l) == '=') { adv(l); adv(l); return make_token(TOKEN_LE,        "<=", line, col); }
+    if (cur(l) == '>' && peek(l) == '=') { adv(l); adv(l); return make_token(TOKEN_GE,        ">=", line, col); }
 
     char c = cur(l); adv(l);
     switch (c) {
@@ -138,7 +154,6 @@ static Token *read_operator(Lexer *l) {
         case '!': return make_token(TOKEN_NOT,       "!", line, col);
         case '<': return make_token(TOKEN_LT,        "<", line, col);
         case '>': return make_token(TOKEN_GT,        ">", line, col);
-        /* plain '=' is reassignment, distinct from ':=' */
         case '=': return make_token(TOKEN_ASSIGN_EQ, "=", line, col);
         case '(': return make_token(TOKEN_LPAREN,    "(", line, col);
         case ')': return make_token(TOKEN_RPAREN,    ")", line, col);
@@ -220,7 +235,6 @@ static Token *read_ident(Lexer *l) {
         }
     }
 
-    /* English comparison aliases */
     TokenType alias = 0;
     if      (strcmp(buf, "eq") == 0) alias = TOKEN_EQ;
     else if (strcmp(buf, "ne") == 0) alias = TOKEN_NE;
@@ -252,11 +266,51 @@ restart:
     if (c == '/' && peek(l) == '/') { skip_line_comment(l);  goto restart; }
     if (c == '/' && peek(l) == '*') { skip_block_comment(l); goto restart; }
 
+    /*
+     * Dash-word operators: -lt  -gt  -eq  -ne  -ge  -le
+     * Check if '-' is followed immediately by one of the keyword letters.
+     */
+    if (c == '-') {
+        /* peek ahead to see if it's -lt / -gt / -eq / -ne / -ge / -le */
+        const char *s = l->src + l->pos + 1; /* char after '-' */
+        struct { const char *word; TokenType tok; } dash_ops[] = {
+            {"lt", TOKEN_LT}, {"gt", TOKEN_GT},
+            {"eq", TOKEN_EQ}, {"ne", TOKEN_NE},
+            {"ge", TOKEN_GE}, {"le", TOKEN_LE},
+            {NULL, 0}
+        };
+        for (int i = 0; dash_ops[i].word; i++) {
+            size_t wlen = strlen(dash_ops[i].word);
+            if (strncmp(s, dash_ops[i].word, wlen) == 0 &&
+                !isalnum(s[wlen]) && s[wlen] != '_') {
+                /* consume '-' + word */
+                adv(l);
+                for (size_t j = 0; j < wlen; j++) adv(l);
+                char buf[8];
+                snprintf(buf, sizeof(buf), "-%s", dash_ops[i].word);
+                return make_token(dash_ops[i].tok, buf, line, col);
+            }
+        }
+        /* also handle '--' decrement */
+        if (peek(l) == '-') { adv(l); adv(l); return make_token(TOKEN_DEC, "--", line, col); }
+    }
+
+    if (c == '<') {
+        /* Look back (skipping spaces) on current line for "import" */
+        int p = l->pos - 1;
+        while (p >= 0 && (l->src[p] == ' ' || l->src[p] == '\t')) p--;
+        /* check if src[p-5..p] == "import" */
+        if (p >= 5 &&
+            l->src[p-5]=='i' && l->src[p-4]=='m' && l->src[p-3]=='p' &&
+            l->src[p-2]=='o' && l->src[p-1]=='r' && l->src[p]=='t') {
+            return read_angle_string(l);
+        }
+    }
+
     if (isdigit(c))             return read_number(l);
     if (c == '"')               return read_string(l);
     if (isalpha(c) || c == '_') return read_ident(l);
 
-    /* everything else is operator / punctuation */
     return read_operator(l);
 }
 

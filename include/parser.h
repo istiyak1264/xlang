@@ -15,4 +15,4 @@ Parser  *parser_new(Lexer *lexer);
 void     parser_free(Parser *p);
 ASTNode *parser_parse(Parser *p);
  
-#endif 
+#endif

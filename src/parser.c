@@ -8,7 +8,6 @@ static ASTNode *parse_statement(Parser *p);
 static ASTNode *parse_block(Parser *p);
 static ASTNode *parse_expr(Parser *p);
 static ASTNode *parse_expr_or(Parser *p);
-static ASTNode *parse_type(Parser *p, VarType *type);
 
 static void advance(Parser *p) {
     token_free(p->current);
@@ -17,7 +16,6 @@ static void advance(Parser *p) {
 }
 
 static int check(Parser *p, TokenType t) { return p->current->type == t; }
-static int peek_is(Parser *p, TokenType t) { return p->peek->type == t; }
 
 static void skip_nl(Parser *p) {
     while (p->current->type == TOKEN_NEWLINE) advance(p);
@@ -38,12 +36,12 @@ static Token *expect(Parser *p, TokenType t) {
 
 static VarType parse_type_token(Parser *p) {
     switch (p->current->type) {
-        case TOKEN_INT: advance(p); return TYPE_INT;
-        case TOKEN_FLOAT: advance(p); return TYPE_FLOAT;
-        case TOKEN_DOUBLE: advance(p); return TYPE_DOUBLE;
+        case TOKEN_INT:         advance(p); return TYPE_INT;
+        case TOKEN_FLOAT:       advance(p); return TYPE_FLOAT;
+        case TOKEN_DOUBLE:      advance(p); return TYPE_DOUBLE;
         case TOKEN_STRING_TYPE: advance(p); return TYPE_STRING;
-        case TOKEN_ARRAY: advance(p); return TYPE_ARRAY;
-        default: return TYPE_UNKNOWN;
+        case TOKEN_ARRAY:       advance(p); return TYPE_ARRAY;
+        default:                            return TYPE_UNKNOWN;
     }
 }
 
@@ -109,7 +107,7 @@ static ASTNode *parse_primary(Parser *p) {
     if (check(p, TOKEN_IDENT)) {
         char *name = strdup(p->current->value);
         advance(p);
-        
+
         if (check(p, TOKEN_LPAREN)) {
             ASTNode *call = ast_node_new(NODE_FUNC_CALL, line);
             call->sval = name;
@@ -121,7 +119,7 @@ static ASTNode *parse_primary(Parser *p) {
             expect(p, TOKEN_RPAREN);
             return call;
         }
-        
+
         ASTNode *ident = ast_node_new(NODE_IDENT, line);
         ident->sval = name;
         return ident;
@@ -140,7 +138,7 @@ static ASTNode *parse_primary(Parser *p) {
         ast_add_child(u, parse_primary(p));
         return u;
     }
-    
+
     error(line, "unexpected token '%s' in expression", p->current->value);
     return ast_node_new(NODE_INT_LIT, line);
 }
@@ -164,11 +162,10 @@ static ASTNode *parse_mul(Parser *p) {
         int line = p->current->line;
         char *op = strdup(p->current->value);
         advance(p);
-        ASTNode *right = parse_postfix(p);
         ASTNode *bin = ast_node_new(NODE_BINOP, line);
         bin->sval = op;
         ast_add_child(bin, left);
-        ast_add_child(bin, right);
+        ast_add_child(bin, parse_postfix(p));
         left = bin;
     }
     return left;
@@ -180,11 +177,10 @@ static ASTNode *parse_add(Parser *p) {
         int line = p->current->line;
         char *op = strdup(p->current->value);
         advance(p);
-        ASTNode *right = parse_mul(p);
         ASTNode *bin = ast_node_new(NODE_BINOP, line);
         bin->sval = op;
         ast_add_child(bin, left);
-        ast_add_child(bin, right);
+        ast_add_child(bin, parse_mul(p));
         left = bin;
     }
     return left;
@@ -197,11 +193,10 @@ static ASTNode *parse_cmp(Parser *p) {
         int line = p->current->line;
         char *op = strdup(p->current->value);
         advance(p);
-        ASTNode *right = parse_add(p);
         ASTNode *bin = ast_node_new(NODE_BINOP, line);
         bin->sval = op;
         ast_add_child(bin, left);
-        ast_add_child(bin, right);
+        ast_add_child(bin, parse_add(p));
         left = bin;
     }
     return left;
@@ -212,11 +207,10 @@ static ASTNode *parse_and(Parser *p) {
     while (check(p, TOKEN_AND)) {
         int line = p->current->line;
         advance(p);
-        ASTNode *right = parse_cmp(p);
         ASTNode *bin = ast_node_new(NODE_BINOP, line);
         bin->sval = strdup("&&");
         ast_add_child(bin, left);
-        ast_add_child(bin, right);
+        ast_add_child(bin, parse_cmp(p));
         left = bin;
     }
     return left;
@@ -227,11 +221,10 @@ static ASTNode *parse_expr_or(Parser *p) {
     while (check(p, TOKEN_OR)) {
         int line = p->current->line;
         advance(p);
-        ASTNode *right = parse_and(p);
         ASTNode *bin = ast_node_new(NODE_BINOP, line);
         bin->sval = strdup("||");
         ast_add_child(bin, left);
-        ast_add_child(bin, right);
+        ast_add_child(bin, parse_and(p));
         left = bin;
     }
     return left;
@@ -241,16 +234,17 @@ static ASTNode *parse_expr(Parser *p) { return parse_expr_or(p); }
 
 static ASTNode *parse_block_internal(Parser *p, int start_col) {
     ASTNode *block = ast_node_new(NODE_BLOCK, p->current->line);
-    
+
     while (!check(p, TOKEN_EOF)) {
         skip_nl(p);
         if (check(p, TOKEN_EOF)) break;
         if (p->current->col < start_col) break;
-        
+
         TokenType t = p->current->type;
-        if (t == TOKEN_ELSE_IF || t == TOKEN_ELSE || t == TOKEN_CASE || t == TOKEN_DEFAULT)
+        if (t == TOKEN_ELSE_IF || t == TOKEN_ELSE ||
+            t == TOKEN_CASE    || t == TOKEN_DEFAULT)
             break;
-        
+
         ASTNode *s = parse_statement(p);
         if (s) ast_add_child(block, s);
         skip_nl(p);
@@ -265,22 +259,20 @@ static ASTNode *parse_block(Parser *p) {
 }
 
 static ASTNode *parse_colon_block(Parser *p) {
-    if (check(p, TOKEN_COLON)) {
-        advance(p);
-    }
+    if (check(p, TOKEN_COLON)) advance(p);
     while (!check(p, TOKEN_NEWLINE) && !check(p, TOKEN_EOF)) advance(p);
     while (check(p, TOKEN_NEWLINE)) advance(p);
     if (check(p, TOKEN_EOF)) return ast_node_new(NODE_BLOCK, p->current->line);
-    
+
     int block_col = p->current->col;
     return parse_block_internal(p, block_col);
 }
 
 static ASTNode *parse_import(Parser *p) {
     int line = p->current->line;
-    advance(p);
+    advance(p); /* consume 'import' */
     ASTNode *imp = ast_node_new(NODE_IMPORT, line);
-    
+
     while (!check(p, TOKEN_NEWLINE) && !check(p, TOKEN_EOF)) {
         if (check(p, TOKEN_STRING_LIT)) {
             ASTNode *h = ast_node_new(NODE_IMPORT, line);
@@ -295,22 +287,22 @@ static ASTNode *parse_import(Parser *p) {
 
 static ASTNode *parse_function(Parser *p) {
     int line = p->current->line;
-    advance(p);
+    advance(p); /* consume 'function' */
     ASTNode *fn = ast_node_new(NODE_FUNCTION_DEF, line);
     fn->sval = strdup(p->current->value);
     expect(p, TOKEN_IDENT);
     expect(p, TOKEN_LPAREN);
-    
+
     while (!check(p, TOKEN_RPAREN) && !check(p, TOKEN_EOF)) {
         ASTNode *param = ast_node_new(NODE_PARAM, p->current->line);
         param->vtype = parse_type_token(p);
-        param->sval = strdup(p->current->value);
+        param->sval  = strdup(p->current->value);
         expect(p, TOKEN_IDENT);
         ast_add_child(fn, param);
         if (check(p, TOKEN_COMMA)) advance(p);
     }
     expect(p, TOKEN_RPAREN);
-    
+
     ASTNode *body = parse_colon_block(p);
     ast_add_child(fn, body);
     return fn;
@@ -318,23 +310,61 @@ static ASTNode *parse_function(Parser *p) {
 
 static ASTNode *parse_var_decl(Parser *p) {
     int line = p->current->line;
-    ASTNode *n = ast_node_new(NODE_VAR_DECL, line);
-    n->vtype = parse_type_token(p);
-    n->sval = strdup(p->current->value);
+    VarType vt = parse_type_token(p);
+
+    /* collect all names */
+    char *names[64];
+    int   ncount = 0;
+
+    names[ncount++] = strdup(p->current->value);
     expect(p, TOKEN_IDENT);
-    
+
+    while (check(p, TOKEN_COMMA) && ncount < 64) {
+        advance(p); /* consume ',' */
+        /* If next token is a type keyword, stop (different decl) */
+        if (is_type_token(p)) break;
+        names[ncount++] = strdup(p->current->value);
+        expect(p, TOKEN_IDENT);
+    }
+
+    /* Optional initialiser — applies to ALL declared names */
+    ASTNode *init_expr = NULL;
     if (check(p, TOKEN_ASSIGN)) {
         advance(p);
-        ast_add_child(n, parse_expr(p));
+        init_expr = parse_expr(p);
     }
-    return n;
+
+    /* Build a wrapper BLOCK node if more than one name, else single decl */
+    if (ncount == 1) {
+        ASTNode *n = ast_node_new(NODE_VAR_DECL, line);
+        n->vtype = vt;
+        n->sval  = names[0];
+        if (init_expr) ast_add_child(n, init_expr);
+        return n;
+    }
+
+    /* Multiple names → a BLOCK of VAR_DECL nodes */
+    ASTNode *blk = ast_node_new(NODE_BLOCK, line);
+    for (int i = 0; i < ncount; i++) {
+        ASTNode *n = ast_node_new(NODE_VAR_DECL, line);
+        n->vtype = vt;
+        n->sval  = names[i];
+        /* Give each its own copy of the initialiser (if any) */
+        if (init_expr && i == ncount - 1) {
+            ast_add_child(n, init_expr); /* last one takes the real node */
+        } else if (init_expr) {
+            /* others get default zero — no child means no initialiser */
+        }
+        ast_add_child(blk, n);
+    }
+    return blk;
 }
 
 static ASTNode *parse_assign_or_expr(Parser *p) {
     int line = p->current->line;
     ASTNode *expr = parse_expr(p);
-    
-    if (check(p, TOKEN_ASSIGN)) {
+
+    if (check(p, TOKEN_ASSIGN) || check(p, TOKEN_ASSIGN_EQ)) {
         advance(p);
         ASTNode *n = ast_node_new(NODE_ASSIGN, line);
         ast_add_child(n, expr);
@@ -345,26 +375,42 @@ static ASTNode *parse_assign_or_expr(Parser *p) {
 }
 
 static ASTNode *parse_if(Parser *p) {
-    int line = p->current->line;
+    int line   = p->current->line;
     int if_col = p->current->col;
-    advance(p);
+    advance(p); /* consume 'if' */
     ASTNode *n = ast_node_new(NODE_IF, line);
-    
+
     expect(p, TOKEN_LPAREN);
     ast_add_child(n, parse_expr(p));
     expect(p, TOKEN_RPAREN);
     ast_add_child(n, parse_colon_block(p));
-    
+
     while (check(p, TOKEN_NEWLINE)) advance(p);
-    
-    while (check(p, TOKEN_ELSE) && p->current->col == if_col) {
-        int eli = p->current->line;
-        advance(p);
-        ASTNode *el = ast_node_new(NODE_IF, eli);
-        el->else_kind = ELSE_BARE;
-        ast_add_child(el, parse_colon_block(p));
-        ast_add_child(n, el);
-        while (check(p, TOKEN_NEWLINE)) advance(p);
+
+    while (p->current->col == if_col && !check(p, TOKEN_EOF)) {
+        if (check(p, TOKEN_ELSE_IF)) {
+            int eli = p->current->line;
+            advance(p); /* consume 'else if' */
+            ASTNode *el = ast_node_new(NODE_IF, eli);
+            el->else_kind = ELSE_IF;
+            expect(p, TOKEN_LPAREN);
+            ast_add_child(el, parse_expr(p));
+            expect(p, TOKEN_RPAREN);
+            ast_add_child(el, parse_colon_block(p));
+            ast_add_child(n, el);
+            while (check(p, TOKEN_NEWLINE)) advance(p);
+        } else if (check(p, TOKEN_ELSE)) {
+            int eli = p->current->line;
+            advance(p); /* consume 'else' */
+            ASTNode *el = ast_node_new(NODE_IF, eli);
+            el->else_kind = ELSE_BARE;
+            ast_add_child(el, parse_colon_block(p));
+            ast_add_child(n, el);
+            while (check(p, TOKEN_NEWLINE)) advance(p);
+            break; /* nothing after bare else */
+        } else {
+            break;
+        }
     }
     return n;
 }
@@ -373,7 +419,6 @@ static ASTNode *parse_while(Parser *p) {
     int line = p->current->line;
     advance(p);
     ASTNode *n = ast_node_new(NODE_WHILE, line);
-    
     expect(p, TOKEN_LPAREN);
     ast_add_child(n, parse_expr(p));
     expect(p, TOKEN_RPAREN);
@@ -385,14 +430,11 @@ static ASTNode *parse_for(Parser *p) {
     int line = p->current->line;
     advance(p);
     ASTNode *n = ast_node_new(NODE_FOR, line);
-    
     expect(p, TOKEN_LPAREN);
-    
-    if (is_type_token(p))
-        ast_add_child(n, parse_var_decl(p));
-    else
-        ast_add_child(n, parse_assign_or_expr(p));
-    
+
+    if (is_type_token(p)) ast_add_child(n, parse_var_decl(p));
+    else                   ast_add_child(n, parse_assign_or_expr(p));
+
     expect(p, TOKEN_SEMICOLON);
     ast_add_child(n, parse_expr(p));
     expect(p, TOKEN_SEMICOLON);
@@ -406,20 +448,19 @@ static ASTNode *parse_switch(Parser *p) {
     int line = p->current->line;
     advance(p);
     ASTNode *n = ast_node_new(NODE_SWITCH, line);
-    
     expect(p, TOKEN_LPAREN);
     ast_add_child(n, parse_expr(p));
     expect(p, TOKEN_RPAREN);
     expect(p, TOKEN_COLON);
     while (check(p, TOKEN_NEWLINE)) advance(p);
-    
+
     int case_col = p->current->col;
-    
+
     while ((check(p, TOKEN_CASE) || check(p, TOKEN_DEFAULT)) &&
            p->current->col == case_col && !check(p, TOKEN_EOF)) {
         int cline = p->current->line;
         ASTNode *cas = ast_node_new(NODE_CASE, cline);
-        
+
         if (check(p, TOKEN_DEFAULT)) {
             cas->sval = strdup("default");
             advance(p);
@@ -429,7 +470,7 @@ static ASTNode *parse_switch(Parser *p) {
         }
         expect(p, TOKEN_COLON);
         while (check(p, TOKEN_NEWLINE)) advance(p);
-        
+
         int body_col = p->current->col;
         ASTNode *body = parse_block_internal(p, body_col);
         ast_add_child(cas, body);
@@ -443,7 +484,6 @@ static ASTNode *parse_output(Parser *p) {
     int line = p->current->line;
     advance(p);
     ASTNode *n = ast_node_new(NODE_OUTPUT, line);
-    
     expect(p, TOKEN_LPAREN);
     while (!check(p, TOKEN_RPAREN) && !check(p, TOKEN_EOF)) {
         ast_add_child(n, parse_expr(p));
@@ -456,37 +496,77 @@ static ASTNode *parse_output(Parser *p) {
 static ASTNode *parse_statement(Parser *p) {
     skip_nl(p);
     int line = p->current->line;
-    
+
     switch (p->current->type) {
-        case TOKEN_IMPORT: return parse_import(p);
+        case TOKEN_IMPORT:   return parse_import(p);
         case TOKEN_FUNCTION: return parse_function(p);
-        case TOKEN_IF: return parse_if(p);
-        case TOKEN_WHILE: return parse_while(p);
-        case TOKEN_FOR: return parse_for(p);
-        case TOKEN_SWITCH: return parse_switch(p);
-        case TOKEN_OUTPUT: return parse_output(p);
+        case TOKEN_IF:       return parse_if(p);
+        case TOKEN_WHILE:    return parse_while(p);
+        case TOKEN_FOR:      return parse_for(p);
+        case TOKEN_SWITCH:   return parse_switch(p);
+        case TOKEN_OUTPUT:   return parse_output(p);
+
         case TOKEN_RETURN: {
+            /* 'return' is forbidden at top scope in xlang — use 'done' */
             advance(p);
             ASTNode *n = ast_node_new(NODE_RETURN, line);
             if (!check(p, TOKEN_NEWLINE) && !check(p, TOKEN_EOF))
                 ast_add_child(n, parse_expr(p));
             return n;
         }
-        case TOKEN_SKIP: advance(p); return ast_node_new(NODE_SKIP, line);
-        case TOKEN_BREAK: advance(p); return ast_node_new(NODE_BREAK, line);
-        case TOKEN_DONE: advance(p); return ast_node_new(NODE_DONE, line);
+
+        case TOKEN_SKIP:
+            advance(p);
+            return ast_node_new(NODE_SKIP, line);
+
+        case TOKEN_BREAK:
+            advance(p);
+            return ast_node_new(NODE_BREAK, line);
+
+        case TOKEN_DONE:
+            advance(p);
+            return ast_node_new(NODE_DONE, line);
+
         default:
             if (is_type_token(p)) return parse_var_decl(p);
             return parse_assign_or_expr(p);
     }
 }
 
+static int has_done(ASTNode *node) {
+    if (!node) return 0;
+    if (node->type == NODE_DONE) return 1;
+    for (int i = 0; i < node->child_count; i++)
+        if (has_done(node->children[i])) return 1;
+    return 0;
+}
+
 ASTNode *parser_parse(Parser *p) {
     ASTNode *program = ast_node_new(NODE_PROGRAM, 0);
+
     while (!check(p, TOKEN_EOF)) {
         ASTNode *s = parse_statement(p);
         if (s) ast_add_child(program, s);
         skip_nl(p);
     }
+
+    /* Validate: every program must have a 'main' function with 'done' */
+    int found_main = 0, main_has_done = 0;
+    for (int i = 0; i < program->child_count; i++) {
+        ASTNode *node = program->children[i];
+        if (node->type == NODE_FUNCTION_DEF && node->sval &&
+            strcmp(node->sval, "main") == 0) {
+            found_main = 1;
+            main_has_done = has_done(node);
+        }
+    }
+
+    if (!found_main) {
+        error(0, "প্রোগ্রামটিতে কোনো main() ফাংশন ডিফাইন করা হয়নি।");
+    }
+    if (!main_has_done) {
+        error(0, "main() ফাংশনের শেষে done কীওয়ার্ড খুঁজে পাওয়া যায়নি।প্রোগ্রামের শেষ বোঝাতে অবশ্যই done লিখতে হবে।");
+    }
+
     return program;
 }

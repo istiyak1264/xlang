@@ -20,7 +20,7 @@ typedef enum {
     /* Arithmetic */
     TOKEN_PLUS, TOKEN_MINUS, TOKEN_STAR, TOKEN_SLASH, TOKEN_PERCENT,
     TOKEN_INC, TOKEN_DEC,
-    /* Comparison */
+    /* Comparison — symbolic and dash-word forms */
     TOKEN_EQ, TOKEN_NE, TOKEN_GT, TOKEN_LT, TOKEN_GE, TOKEN_LE,
     /* Logical */
     TOKEN_AND, TOKEN_OR, TOKEN_NOT, TOKEN_XOR,

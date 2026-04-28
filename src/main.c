@@ -115,11 +115,11 @@ int main(int argc, char **argv) {
         remove(c_path);
 
         if (ret != 0) {
-            fprintf(stderr, "\033[1;31m✗ Compilation failed.\033[0m\n");
+            fprintf(stderr, "Compilation Failed.\n");
             ast_free(ast); parser_free(parser); lexer_free(lexer); free(source);
             return 1;
         }
-        fprintf(stderr, "\033[1;32m✓ Compiled successfully: %s\033[0m\n", out_name);
+        fprintf(stderr, "Compilation completed successfully. Output file:%s\n", out_name);
     }
 
     ast_free(ast); parser_free(parser); lexer_free(lexer); free(source);
