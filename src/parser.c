@@ -154,7 +154,7 @@ static ASTNode *parse_postfix(Parser *p) {
             advance(p);
             left = n;
         } else if (check(p, TOKEN_LBRACKET)) {
-            advance(p); /* consume '[' */
+            advance(p);
             ASTNode *n = ast_node_new(NODE_INDEX, line);
             ast_add_child(n, left);
             ast_add_child(n, parse_expr(p));
@@ -281,7 +281,7 @@ static ASTNode *parse_colon_block(Parser *p) {
 
 static ASTNode *parse_import(Parser *p) {
     int line = p->current->line;
-    advance(p); /* consume 'import' */
+    advance(p);
     ASTNode *imp = ast_node_new(NODE_IMPORT, line);
 
     while (!check(p, TOKEN_NEWLINE) && !check(p, TOKEN_EOF)) {
@@ -298,7 +298,7 @@ static ASTNode *parse_import(Parser *p) {
 
 static ASTNode *parse_function(Parser *p) {
     int line = p->current->line;
-    advance(p); /* consume 'function' */
+    advance(p);
     ASTNode *fn = ast_node_new(NODE_FUNCTION_DEF, line);
     fn->sval = strdup(p->current->value);
     expect(p, TOKEN_IDENT);
@@ -323,7 +323,6 @@ static ASTNode *parse_var_decl(Parser *p) {
     int line = p->current->line;
     VarType vt = parse_type_token(p);
 
-    /* collect all names */
     char *names[64];
     int   ncount = 0;
 
@@ -331,21 +330,17 @@ static ASTNode *parse_var_decl(Parser *p) {
     expect(p, TOKEN_IDENT);
 
     while (check(p, TOKEN_COMMA) && ncount < 64) {
-        advance(p); /* consume ',' */
-        /* If next token is a type keyword, stop (different decl) */
+        advance(p); 
         if (is_type_token(p)) break;
         names[ncount++] = strdup(p->current->value);
         expect(p, TOKEN_IDENT);
     }
-
-    /* Optional initialiser — applies to ALL declared names */
     ASTNode *init_expr = NULL;
     if (check(p, TOKEN_ASSIGN)) {
         advance(p);
         init_expr = parse_expr(p);
     }
 
-    /* Build a wrapper BLOCK node if more than one name, else single decl */
     if (ncount == 1) {
         ASTNode *n = ast_node_new(NODE_VAR_DECL, line);
         n->vtype = vt;
@@ -354,17 +349,16 @@ static ASTNode *parse_var_decl(Parser *p) {
         return n;
     }
 
-    /* Multiple names → a BLOCK of VAR_DECL nodes */
     ASTNode *blk = ast_node_new(NODE_BLOCK, line);
     for (int i = 0; i < ncount; i++) {
         ASTNode *n = ast_node_new(NODE_VAR_DECL, line);
         n->vtype = vt;
         n->sval  = names[i];
-        /* Give each its own copy of the initialiser (if any) */
+
         if (init_expr && i == ncount - 1) {
-            ast_add_child(n, init_expr); /* last one takes the real node */
+            ast_add_child(n, init_expr);
         } else if (init_expr) {
-            /* others get default zero — no child means no initialiser */
+            /* others get by default zero — no child and initializer*/
         }
         ast_add_child(blk, n);
     }
@@ -388,7 +382,7 @@ static ASTNode *parse_assign_or_expr(Parser *p) {
 static ASTNode *parse_if(Parser *p) {
     int line   = p->current->line;
     int if_col = p->current->col;
-    advance(p); /* consume 'if' */
+    advance(p);
     ASTNode *n = ast_node_new(NODE_IF, line);
 
     expect(p, TOKEN_LPAREN);
@@ -401,7 +395,7 @@ static ASTNode *parse_if(Parser *p) {
     while (p->current->col == if_col && !check(p, TOKEN_EOF)) {
         if (check(p, TOKEN_ELSE_IF)) {
             int eli = p->current->line;
-            advance(p); /* consume 'else if' */
+            advance(p);
             ASTNode *el = ast_node_new(NODE_IF, eli);
             el->else_kind = ELSE_IF;
             expect(p, TOKEN_LPAREN);
@@ -412,13 +406,13 @@ static ASTNode *parse_if(Parser *p) {
             while (check(p, TOKEN_NEWLINE)) advance(p);
         } else if (check(p, TOKEN_ELSE)) {
             int eli = p->current->line;
-            advance(p); /* consume 'else' */
+            advance(p);
             ASTNode *el = ast_node_new(NODE_IF, eli);
             el->else_kind = ELSE_BARE;
             ast_add_child(el, parse_colon_block(p));
             ast_add_child(n, el);
             while (check(p, TOKEN_NEWLINE)) advance(p);
-            break; /* nothing after bare else */
+            break;
         } else {
             break;
         }
@@ -532,7 +526,7 @@ static ASTNode *parse_statement(Parser *p) {
         case TOKEN_PRINT:    return parse_print(p);
 
         case TOKEN_RETURN: {
-            /* 'return' is forbidden at top scope in xlang — use 'done' */
+            /* done is used inspite of return 0 */
             advance(p);
             ASTNode *n = ast_node_new(NODE_RETURN, line);
             if (!check(p, TOKEN_NEWLINE) && !check(p, TOKEN_EOF))

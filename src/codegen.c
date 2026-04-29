@@ -15,8 +15,7 @@ static void sym_push(const char *name, VarType vt) {
     if (sym_count < SYM_CAP) {
         strncpy(sym_table[sym_count].name, name, 63);
         sym_table[sym_count].vtype     = vt;
-        sym_table[sym_count].elem_type = TYPE_INT; /* default element type */
-        sym_count++;
+        sym_table[sym_count].elem_type = TYPE_INT;
     }
 }
 
@@ -93,9 +92,6 @@ static const char *op_to_c(const char *op) {
     return op;
 }
 
-/*
- * Determine expression type — now consults symbol table for identifiers.
- */
 static VarType expr_type(ASTNode *node) {
     if (!node) return TYPE_INT;
     switch (node->type) {
@@ -107,7 +103,7 @@ static VarType expr_type(ASTNode *node) {
         case NODE_BINOP:      return expr_type(node->children[0]);
         case NODE_FUNC_CALL:  return TYPE_INT;
         case NODE_INDEX: {
-            /* Return element type of the array being indexed */
+            /* Return element type of the array */
             ASTNode *arr = node->children[0];
             if (arr && arr->type == NODE_IDENT)
                 return sym_lookup_elem(arr->sval);
@@ -176,7 +172,7 @@ static void gen_expr(CodeGen *cg, ASTNode *node) {
             break;
 
         case NODE_BINOP:
-            /* String concatenation: string + string → xlang_strcat helper */
+            /* String concatenation: string + string */
             if (strcmp(node->sval, "+") == 0 &&
                 expr_type(node->children[0]) == TYPE_STRING) {
                 fprintf(cg->out, "xlang_strcat(");
@@ -206,7 +202,6 @@ static void gen_expr(CodeGen *cg, ASTNode *node) {
             break;
 
         case NODE_INDEX: {
-            /* Cast the void* result to the correct element type */
             ASTNode *arr = node->children[0];
             VarType  et  = TYPE_INT;
             if (arr && arr->type == NODE_IDENT)
@@ -228,8 +223,6 @@ static void gen_expr(CodeGen *cg, ASTNode *node) {
         }
 
         case NODE_ARRAY_LIT:
-            /* Array literals are handled at declaration time in gen_stmt;
-               if one appears standalone in an expression just emit NULL */
             fprintf(cg->out, "NULL");
             break;
 
@@ -241,14 +234,13 @@ static void gen_expr(CodeGen *cg, ASTNode *node) {
 
 static void gen_output(CodeGen *cg, ASTNode *node) {
     if (node->child_count == 0) {
-        /* bare output() / print() — nothing to emit */
         return;
     }
 
     do_indent(cg);
     fprintf(cg->out, "printf(\"");
 
-    /* First pass: format specifiers, space-separated */
+    /* First pass: format specifiers */
     for (int i = 0; i < node->child_count; i++) {
         ASTNode *arg = node->children[i];
         VarType  t   = expr_type(arg);
@@ -257,7 +249,7 @@ static void gen_output(CodeGen *cg, ASTNode *node) {
         else if (t == TYPE_FLOAT || t == TYPE_DOUBLE) fprintf(cg->out, "%%g");
         else                                          fprintf(cg->out, "%%lld");
     }
-    fprintf(cg->out, "\"");   /* NO automatic \n */
+    fprintf(cg->out, "\"");
 
     /* Second pass: arguments */
     for (int i = 0; i < node->child_count; i++) {
@@ -275,12 +267,10 @@ static void gen_output(CodeGen *cg, ASTNode *node) {
         }
     }
     fprintf(cg->out, ");\n");
-    /* Always flush so output appears immediately (important for prompts) */
     do_indent(cg);
     fprintf(cg->out, "fflush(stdout);\n");
 }
 
-/* print() is an alias — identical behaviour */
 static void gen_print(CodeGen *cg, ASTNode *node) {
     gen_output(cg, node);
 }
@@ -332,7 +322,7 @@ static void gen_stmt(CodeGen *cg, ASTNode *node) {
 
         case NODE_SKIP:
             do_indent(cg);
-            fprintf(cg->out, "/* skip */\n"); /* no-op — like Python pass */
+            fprintf(cg->out, "/* skip */\n");
             break;
 
         case NODE_BREAK:

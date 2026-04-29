@@ -8,7 +8,7 @@
 #include "codegen.h"
 #include "error.h"
 
-/* Installed at: /usr/local/lib/xlang  (set by 'make install') */
+/* Installed at: /usr/local/lib/xlang */
 #ifndef XLANG_RUNTIME_DIR
 #define XLANG_RUNTIME_DIR "/usr/local/lib/xlang"
 #endif
