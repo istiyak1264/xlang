@@ -2,7 +2,7 @@
     "name": "xlang",
     "displayName": "XLang Language Support",
     "description": "XLang language support: syntax highlighting, snippets, compile and run",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "publisher": "istiyak1264",
     "author": {
         "name": "Istiyak Ahmed",

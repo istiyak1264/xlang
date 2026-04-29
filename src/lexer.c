@@ -187,6 +187,7 @@ static const struct { const char *w; TokenType t; } kw[] = {
     {"default",  TOKEN_DEFAULT},
     {"import",   TOKEN_IMPORT},
     {"output",   TOKEN_OUTPUT},
+    {"print",    TOKEN_PRINT},
     {"input",    TOKEN_INPUT},
     {"int",      TOKEN_INT},
     {"float",    TOKEN_FLOAT},
@@ -266,10 +267,6 @@ restart:
     if (c == '/' && peek(l) == '/') { skip_line_comment(l);  goto restart; }
     if (c == '/' && peek(l) == '*') { skip_block_comment(l); goto restart; }
 
-    /*
-     * Dash-word operators: -lt  -gt  -eq  -ne  -ge  -le
-     * Check if '-' is followed immediately by one of the keyword letters.
-     */
     if (c == '-') {
         /* peek ahead to see if it's -lt / -gt / -eq / -ne / -ge / -le */
         const char *s = l->src + l->pos + 1; /* char after '-' */
@@ -339,6 +336,7 @@ const char *token_type_name(TokenType t) {
         case TOKEN_DEFAULT:     return "default";
         case TOKEN_IMPORT:      return "import";
         case TOKEN_OUTPUT:      return "output";
+        case TOKEN_PRINT:       return "print";
         case TOKEN_INPUT:       return "input";
         case TOKEN_ASSIGN:      return ":=";
         case TOKEN_ASSIGN_EQ:   return "=";

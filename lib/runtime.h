@@ -16,9 +16,9 @@ typedef struct {
     size_t  capacity;
 } XLangString;
 
-XLangString *xlang_string_new(const char *initial);
-void         xlang_string_free(XLangString *str);
-int          xlang_string_length(XLangString *str);
+XLangString *string_new(const char *initial);
+void         string_free(XLangString *str);
+int          string_length(XLangString *str);
 
 /* ---------------------------------------------------------------
  * Array
@@ -35,10 +35,12 @@ void        array_free(XLangArray *arr);
 void        array_push(XLangArray *arr, void *element);
 void       *array_get(XLangArray *arr, size_t index);
 size_t      array_size(XLangArray *arr);
+long long   xlang_array_size(XLangArray *arr);  /* xlang-callable wrapper */
 
 /* ---------------------------------------------------------------
- * I/O
+ * String utilities
  * --------------------------------------------------------------- */
+char *xlang_strcat(const char *a, const char *b);
 char  *string_input(void);
 int    int_input(void);
 double double_input(void);

@@ -35,6 +35,7 @@ typedef enum {
     NODE_SWITCH,
     NODE_CASE,
     NODE_OUTPUT,
+    NODE_PRINT,
     NODE_INPUT,
     NODE_FUNC_CALL,
     NODE_BINOP,

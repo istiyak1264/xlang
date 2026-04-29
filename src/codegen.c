@@ -6,7 +6,7 @@
 #include <stdio.h>
 
 #define SYM_CAP 256
-typedef struct { char name[64]; VarType vtype; } Symbol;
+typedef struct { char name[64]; VarType vtype; VarType elem_type; } Symbol;
 
 static Symbol sym_table[SYM_CAP];
 static int    sym_count = 0;
@@ -14,7 +14,17 @@ static int    sym_count = 0;
 static void sym_push(const char *name, VarType vt) {
     if (sym_count < SYM_CAP) {
         strncpy(sym_table[sym_count].name, name, 63);
-        sym_table[sym_count].vtype = vt;
+        sym_table[sym_count].vtype     = vt;
+        sym_table[sym_count].elem_type = TYPE_INT; /* default element type */
+        sym_count++;
+    }
+}
+
+static void sym_push_array(const char *name, VarType elem_type) {
+    if (sym_count < SYM_CAP) {
+        strncpy(sym_table[sym_count].name, name, 63);
+        sym_table[sym_count].vtype     = TYPE_ARRAY;
+        sym_table[sym_count].elem_type = elem_type;
         sym_count++;
     }
 }
@@ -23,6 +33,13 @@ static VarType sym_lookup(const char *name) {
     for (int i = sym_count - 1; i >= 0; i--)
         if (strcmp(sym_table[i].name, name) == 0)
             return sym_table[i].vtype;
+    return TYPE_INT; /* default */
+}
+
+static VarType sym_lookup_elem(const char *name) {
+    for (int i = sym_count - 1; i >= 0; i--)
+        if (strcmp(sym_table[i].name, name) == 0)
+            return sym_table[i].elem_type;
     return TYPE_INT; /* default */
 }
 
@@ -88,7 +105,14 @@ static VarType expr_type(ASTNode *node) {
         case NODE_INPUT:      return TYPE_STRING;
         case NODE_IDENT:      return sym_lookup(node->sval);
         case NODE_BINOP:      return expr_type(node->children[0]);
-        case NODE_FUNC_CALL:  return TYPE_INT; /* default; extend if needed */
+        case NODE_FUNC_CALL:  return TYPE_INT;
+        case NODE_INDEX: {
+            /* Return element type of the array being indexed */
+            ASTNode *arr = node->children[0];
+            if (arr && arr->type == NODE_IDENT)
+                return sym_lookup_elem(arr->sval);
+            return TYPE_INT;
+        }
         default:              return TYPE_INT;
     }
 }
@@ -96,6 +120,27 @@ static VarType expr_type(ASTNode *node) {
 static void gen_expr(CodeGen *cg, ASTNode *node);
 static void gen_stmt(CodeGen *cg, ASTNode *node);
 static void gen_block(CodeGen *cg, ASTNode *node);
+
+static void emit_c_string(FILE *out, const char *s) {
+    fputc('"', out);
+    for (; *s; s++) {
+        unsigned char c = (unsigned char)*s;
+        switch (c) {
+            case '\n': fputs("\\n",  out); break;
+            case '\r': fputs("\\r",  out); break;
+            case '\t': fputs("\\t",  out); break;
+            case '\\': fputs("\\\\", out); break;
+            case '"':  fputs("\\\"", out); break;
+            default:
+                if (c < 32 || c == 127)
+                    fprintf(out, "\\x%02x", c);
+                else
+                    fputc(c, out);
+                break;
+        }
+    }
+    fputc('"', out);
+}
 
 static void gen_expr(CodeGen *cg, ASTNode *node) {
     if (!node) { fprintf(cg->out, "0"); return; }
@@ -110,7 +155,7 @@ static void gen_expr(CodeGen *cg, ASTNode *node) {
             break;
 
         case NODE_STRING_LIT:
-            fprintf(cg->out, "\"%s\"", node->sval);
+            emit_c_string(cg->out, node->sval);
             break;
 
         case NODE_IDENT:
@@ -118,8 +163,7 @@ static void gen_expr(CodeGen *cg, ASTNode *node) {
             break;
 
         case NODE_INPUT:
-            /* xlang_input_string() returns a freshly malloc'd char* */
-            fprintf(cg->out, "xlang_input_string()");
+            fprintf(cg->out, "string_input()");
             break;
 
         case NODE_FUNC_CALL:
@@ -132,11 +176,21 @@ static void gen_expr(CodeGen *cg, ASTNode *node) {
             break;
 
         case NODE_BINOP:
-            fprintf(cg->out, "(");
-            gen_expr(cg, node->children[0]);
-            fprintf(cg->out, " %s ", op_to_c(node->sval));
-            gen_expr(cg, node->children[1]);
-            fprintf(cg->out, ")");
+            /* String concatenation: string + string → xlang_strcat helper */
+            if (strcmp(node->sval, "+") == 0 &&
+                expr_type(node->children[0]) == TYPE_STRING) {
+                fprintf(cg->out, "xlang_strcat(");
+                gen_expr(cg, node->children[0]);
+                fprintf(cg->out, ", ");
+                gen_expr(cg, node->children[1]);
+                fprintf(cg->out, ")");
+            } else {
+                fprintf(cg->out, "(");
+                gen_expr(cg, node->children[0]);
+                fprintf(cg->out, " %s ", op_to_c(node->sval));
+                gen_expr(cg, node->children[1]);
+                fprintf(cg->out, ")");
+            }
             break;
 
         case NODE_UNOP:
@@ -151,12 +205,32 @@ static void gen_expr(CodeGen *cg, ASTNode *node) {
             fprintf(cg->out, "%s", node->sval);
             break;
 
-        case NODE_INDEX:
-            fprintf(cg->out, "*(long long*)xlang_array_get(");
+        case NODE_INDEX: {
+            /* Cast the void* result to the correct element type */
+            ASTNode *arr = node->children[0];
+            VarType  et  = TYPE_INT;
+            if (arr && arr->type == NODE_IDENT)
+                et = sym_lookup_elem(arr->sval);
+            if (et == TYPE_STRING) {
+                fprintf(cg->out, "(char*)array_get(");
+            } else if (et == TYPE_FLOAT) {
+                fprintf(cg->out, "*(float*)array_get(");
+            } else if (et == TYPE_DOUBLE) {
+                fprintf(cg->out, "*(double*)array_get(");
+            } else {
+                fprintf(cg->out, "*(long long*)array_get(");
+            }
             gen_expr(cg, node->children[0]);
             fprintf(cg->out, ", ");
             gen_expr(cg, node->children[1]);
             fprintf(cg->out, ")");
+            break;
+        }
+
+        case NODE_ARRAY_LIT:
+            /* Array literals are handled at declaration time in gen_stmt;
+               if one appears standalone in an expression just emit NULL */
+            fprintf(cg->out, "NULL");
             break;
 
         default:
@@ -165,45 +239,50 @@ static void gen_expr(CodeGen *cg, ASTNode *node) {
     }
 }
 
-/*
- * output() — fix: use symbol table to detect string variables so we
- * emit %s instead of %lld, preventing the garbage-output bug.
- */
 static void gen_output(CodeGen *cg, ASTNode *node) {
+    if (node->child_count == 0) {
+        /* bare output() / print() — nothing to emit */
+        return;
+    }
+
+    do_indent(cg);
+    fprintf(cg->out, "printf(\"");
+
+    /* First pass: format specifiers, space-separated */
     for (int i = 0; i < node->child_count; i++) {
         ASTNode *arg = node->children[i];
-        do_indent(cg);
+        VarType  t   = expr_type(arg);
+        if (i > 0) fprintf(cg->out, " ");
+        if      (t == TYPE_STRING)                    fprintf(cg->out, "%%s");
+        else if (t == TYPE_FLOAT || t == TYPE_DOUBLE) fprintf(cg->out, "%%g");
+        else                                          fprintf(cg->out, "%%lld");
+    }
+    fprintf(cg->out, "\"");   /* NO automatic \n */
 
-        VarType t = expr_type(arg);
-
-        if (arg->type == NODE_STRING_LIT) {
-            /* Literal string: just print it */
-            fprintf(cg->out, "printf(\"%%s\\n\", \"%s\");\n", arg->sval);
-
-        } else if (arg->type == NODE_INT_LIT) {
-            fprintf(cg->out, "printf(\"%%lld\\n\", (long long)%lld);\n", arg->ival);
-
-        } else if (arg->type == NODE_FLOAT_LIT) {
-            fprintf(cg->out, "printf(\"%%g\\n\", (double)%g);\n", arg->fval);
-
+    /* Second pass: arguments */
+    for (int i = 0; i < node->child_count; i++) {
+        ASTNode *arg = node->children[i];
+        VarType  t   = expr_type(arg);
+        fprintf(cg->out, ", ");
+        if (t == TYPE_FLOAT || t == TYPE_DOUBLE) {
+            fprintf(cg->out, "(double)");
+            gen_expr(cg, arg);
         } else if (t == TYPE_STRING) {
-            /* String variable or input() result — use %s, no cast */
-            fprintf(cg->out, "printf(\"%%s\\n\", ");
             gen_expr(cg, arg);
-            fprintf(cg->out, ");\n");
-
-        } else if (t == TYPE_FLOAT || t == TYPE_DOUBLE) {
-            fprintf(cg->out, "printf(\"%%g\\n\", (double)");
-            gen_expr(cg, arg);
-            fprintf(cg->out, ");\n");
-
         } else {
-            /* Integer (default) */
-            fprintf(cg->out, "printf(\"%%lld\\n\", (long long)");
+            fprintf(cg->out, "(long long)");
             gen_expr(cg, arg);
-            fprintf(cg->out, ");\n");
         }
     }
+    fprintf(cg->out, ");\n");
+    /* Always flush so output appears immediately (important for prompts) */
+    do_indent(cg);
+    fprintf(cg->out, "fflush(stdout);\n");
+}
+
+/* print() is an alias — identical behaviour */
+static void gen_print(CodeGen *cg, ASTNode *node) {
+    gen_output(cg, node);
 }
 
 static void gen_if(CodeGen *cg, ASTNode *node) {
@@ -284,11 +363,55 @@ static void gen_stmt(CodeGen *cg, ASTNode *node) {
             for (int si = 0; si < sym_count; si++) {
                 if (strcmp(sym_table[si].name, node->sval) == 0) {
                     already = 1;
-                    /* Update type in case user re-declares with same name */
                     sym_table[si].vtype = node->vtype;
                     break;
                 }
             }
+
+            /* ---- array declaration ---- */
+            if (node->vtype == TYPE_ARRAY && !already) {
+                ASTNode *lit = (node->child_count > 0) ? node->children[0] : NULL;
+
+                /* Infer element type from first literal element */
+                VarType elem = TYPE_INT;
+                if (lit && lit->type == NODE_ARRAY_LIT && lit->child_count > 0)
+                    elem = expr_type(lit->children[0]);
+
+                sym_push_array(node->sval, elem);
+
+                /* XLangArray* name = array_new(ELEM_TYPE); */
+                do_indent(cg);
+                fprintf(cg->out, "XLangArray* %s = array_new(%d);\n",
+                        node->sval, (int)elem);
+
+                /* array_push(name, &element); for each literal element */
+                if (lit && lit->type == NODE_ARRAY_LIT) {
+                    for (int ei = 0; ei < lit->child_count; ei++) {
+                        ASTNode *el = lit->children[ei];
+                        do_indent(cg);
+                        if (elem == TYPE_STRING) {
+                            /* strings: push the char* directly */
+                            fprintf(cg->out, "array_push(%s, (void*)", node->sval);
+                            gen_expr(cg, el);
+                            fprintf(cg->out, ");\n");
+                        } else {
+                            /* numerics: heap-allocate so void* survives */
+                            const char *ct = (elem == TYPE_FLOAT)  ? "float"  :
+                                             (elem == TYPE_DOUBLE) ? "double" :
+                                                                     "long long";
+                            fprintf(cg->out,
+                                "{ %s *_e = malloc(sizeof(%s)); *_e = (%s)",
+                                ct, ct, ct);
+                            gen_expr(cg, el);
+                            fprintf(cg->out, "; array_push(%s, _e); }\n",
+                                    node->sval);
+                        }
+                    }
+                }
+                break;
+            }
+
+            /* ---- non-array declaration ---- */
             if (!already) {
                 sym_push(node->sval, node->vtype);
                 do_indent(cg);
@@ -301,30 +424,60 @@ static void gen_stmt(CodeGen *cg, ASTNode *node) {
                 }
                 fprintf(cg->out, ";\n");
             } else if (node->child_count > 0) {
-                /* It was already declared (as param): emit as assignment */
+                /* Already declared (as param): emit as assignment */
                 do_indent(cg);
                 fprintf(cg->out, "%s = ", node->sval);
                 gen_expr(cg, node->children[0]);
                 fprintf(cg->out, ";\n");
             }
-            /* else: bare re-decl of param with no init — silently skip */
             break;
         }
 
         /* ------ assignment ------ */
         case NODE_ASSIGN:
             if (node->child_count >= 2) {
-                do_indent(cg);
-                gen_expr(cg, node->children[0]);
-                fprintf(cg->out, " = ");
-                gen_expr(cg, node->children[1]);
-                fprintf(cg->out, ";\n");
+                ASTNode *lhs = node->children[0];
+                ASTNode *rhs = node->children[1];
+                if (lhs->type == NODE_INDEX) {
+                    /* arr[i] := val  →  *(type*)array_get(arr, i) = val */
+                    ASTNode *arr = lhs->children[0];
+                    VarType  et  = TYPE_INT;
+                    if (arr && arr->type == NODE_IDENT)
+                        et = sym_lookup_elem(arr->sval);
+                    do_indent(cg);
+                    if (et == TYPE_STRING) {
+                        fprintf(cg->out, "*(char**)array_get(");
+                    } else if (et == TYPE_FLOAT) {
+                        fprintf(cg->out, "*(float*)array_get(");
+                    } else if (et == TYPE_DOUBLE) {
+                        fprintf(cg->out, "*(double*)array_get(");
+                    } else {
+                        fprintf(cg->out, "*(long long*)array_get(");
+                    }
+                    gen_expr(cg, arr);
+                    fprintf(cg->out, ", ");
+                    gen_expr(cg, lhs->children[1]);
+                    fprintf(cg->out, ") = ");
+                    gen_expr(cg, rhs);
+                    fprintf(cg->out, ";\n");
+                } else {
+                    do_indent(cg);
+                    gen_expr(cg, lhs);
+                    fprintf(cg->out, " = ");
+                    gen_expr(cg, rhs);
+                    fprintf(cg->out, ";\n");
+                }
             }
             break;
 
-        /* ------ output ------ */
+        /* ------ output (with newline) ------ */
         case NODE_OUTPUT:
             gen_output(cg, node);
+            break;
+
+        /* ------ print (no newline) ------ */
+        case NODE_PRINT:
+            gen_print(cg, node);
             break;
 
         /* ------ if / else if / else ------ */
@@ -468,11 +621,6 @@ static void emit_forward_decls(CodeGen *cg, ASTNode *root) {
     fprintf(cg->out, "\n");
 }
 
-/*
- * Collect user imports (NODE_IMPORT at top level) and emit them AFTER
- * the standard headers. "main.h" is special: it's not re-emitted here
- * (we handle it internally — xlang's main.h grants access to main()).
- */
 static void emit_user_imports(CodeGen *cg, ASTNode *root) {
     for (int i = 0; i < root->child_count; i++) {
         ASTNode *node = root->children[i];
@@ -480,8 +628,9 @@ static void emit_user_imports(CodeGen *cg, ASTNode *root) {
         for (int j = 0; j < node->child_count; j++) {
             ASTNode *h = node->children[j];
             if (!h->sval) continue;
-            /* Skip "main.h" — it is implicit in every xlang program */
-            if (strcmp(h->sval, "main.h") == 0) continue;
+            /* These are implicit — already pulled in by standard headers */
+            if (strcmp(h->sval, "main.h")   == 0) continue;
+            if (strcmp(h->sval, "string.h") == 0) continue;
             fprintf(cg->out, "#include \"%s\"\n", h->sval);
         }
     }
@@ -541,18 +690,12 @@ void codegen_run(CodeGen *cg, ASTNode *root) {
         cg->indent = 1;
         if (body) gen_block(cg, body);
 
-        /*
-         * For non-void non-main functions that have 'skip' as their only
-         * body (empty stub), emit a default return.
-         */
         if (strcmp(node->sval, "main") != 0) {
             if (rtype != TYPE_VOID) {
                 do_indent(cg);
                 fprintf(cg->out, "return 0;\n");
             }
         } else {
-            /* main always ends with return 0 (done keyword already emitted it,
-               but guard against duplicate — the compiler is smart enough) */
             do_indent(cg);
             fprintf(cg->out, "return 0; /* safety */\n");
         }

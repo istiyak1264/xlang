@@ -51,6 +51,7 @@ static const char *node_type_name(NodeType t) {
         case NODE_SWITCH:       return "SWITCH";
         case NODE_CASE:         return "CASE";
         case NODE_OUTPUT:       return "OUTPUT";
+        case NODE_PRINT:        return "PRINT";
         case NODE_INPUT:        return "INPUT";
         case NODE_FUNC_CALL:    return "FUNC_CALL";
         case NODE_BINOP:        return "BINOP";

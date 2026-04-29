@@ -76,6 +76,20 @@ void *array_get(XLangArray *arr, size_t index) {
 
 size_t array_size(XLangArray *arr) { return arr ? arr->size : 0; }
 
+long long xlang_array_size(XLangArray *arr) { return (long long)(arr ? arr->size : 0); }
+
+char *xlang_strcat(const char *a, const char *b) {
+    if (!a) a = "";
+    if (!b) b = "";
+    size_t la = strlen(a), lb = strlen(b);
+    char *buf = (char *)xlang_malloc(la + lb + 1);
+    if (!buf) return NULL;
+    memcpy(buf, a, la);
+    memcpy(buf + la, b, lb);
+    buf[la + lb] = '\0';
+    return buf;
+}
+
 char *string_input(void) {
     char *buf = (char *)xlang_malloc(4096);
     if (!buf) return NULL;

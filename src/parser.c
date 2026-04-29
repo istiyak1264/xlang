@@ -145,13 +145,24 @@ static ASTNode *parse_primary(Parser *p) {
 
 static ASTNode *parse_postfix(Parser *p) {
     ASTNode *left = parse_primary(p);
-    int line = p->current->line;
-    if (check(p, TOKEN_INC) || check(p, TOKEN_DEC)) {
-        ASTNode *n = ast_node_new(NODE_INC_DEC, line);
-        n->sval = strdup(p->current->value);
-        ast_add_child(n, left);
-        advance(p);
-        return n;
+    for (;;) {
+        int line = p->current->line;
+        if (check(p, TOKEN_INC) || check(p, TOKEN_DEC)) {
+            ASTNode *n = ast_node_new(NODE_INC_DEC, line);
+            n->sval = strdup(p->current->value);
+            ast_add_child(n, left);
+            advance(p);
+            left = n;
+        } else if (check(p, TOKEN_LBRACKET)) {
+            advance(p); /* consume '[' */
+            ASTNode *n = ast_node_new(NODE_INDEX, line);
+            ast_add_child(n, left);
+            ast_add_child(n, parse_expr(p));
+            expect(p, TOKEN_RBRACKET);
+            left = n;
+        } else {
+            break;
+        }
     }
     return left;
 }
@@ -480,6 +491,19 @@ static ASTNode *parse_switch(Parser *p) {
     return n;
 }
 
+static ASTNode *parse_print(Parser *p) {
+    int line = p->current->line;
+    advance(p);
+    ASTNode *n = ast_node_new(NODE_PRINT, line);
+    expect(p, TOKEN_LPAREN);
+    while (!check(p, TOKEN_RPAREN) && !check(p, TOKEN_EOF)) {
+        ast_add_child(n, parse_expr(p));
+        if (check(p, TOKEN_COMMA)) advance(p);
+    }
+    expect(p, TOKEN_RPAREN);
+    return n;
+}
+
 static ASTNode *parse_output(Parser *p) {
     int line = p->current->line;
     advance(p);
@@ -505,6 +529,7 @@ static ASTNode *parse_statement(Parser *p) {
         case TOKEN_FOR:      return parse_for(p);
         case TOKEN_SWITCH:   return parse_switch(p);
         case TOKEN_OUTPUT:   return parse_output(p);
+        case TOKEN_PRINT:    return parse_print(p);
 
         case TOKEN_RETURN: {
             /* 'return' is forbidden at top scope in xlang — use 'done' */
